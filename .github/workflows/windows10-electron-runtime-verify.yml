@@ -87,6 +87,7 @@ jobs:
         run: |
           $config = Get-Content qa/artisys-qa.config.json -Raw | ConvertFrom-Json
           $config.electron.entry = "../apps/nexus-desktop/bootstrap.cjs"
+          $config.electron | Add-Member -NotePropertyName "executablePath" -NotePropertyValue "../node_modules/electron/dist/electron.exe" -Force
           $config.flows | Add-Member -NotePropertyName "ui-review-classic-blue" -NotePropertyValue "flows/ui-review-classic-blue.json" -Force
           $config | ConvertTo-Json -Depth 20 | Set-Content -Encoding UTF8 qa/artisys-qa.runtime44.config.json
 
