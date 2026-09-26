@@ -31,7 +31,8 @@ jobs:
           $env:NEXUS_APP = "pdv-demo"
           $env:ELECTRON_ENABLE_LOGGING = "1"
           $env:ELECTRON_ENABLE_STACK_DUMPING = "1"
-          $exe = (node -p "require('electron')").Trim()
+          $electronOutput = @(node -p "require('electron')")
+          $exe = ([string]($electronOutput | Select-Object -Last 1)).Trim()
           Write-Host "Resolved Electron executable: $exe"
           if (-not (Test-Path $exe)) { throw "Resolved Electron executable does not exist: $exe" }
           $stdout = Join-Path $PWD "electron44-stdout.log"
