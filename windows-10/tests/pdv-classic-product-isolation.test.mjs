@@ -13,6 +13,7 @@ const mainPath = path.join(desktopDir, "main.cjs");
 const builderPath = path.join(desktopDir, "electron-builder.cjs");
 const pdvBuilderPath = path.join(desktopDir, "electron-builder-pdv.cjs");
 const releasePath = fileURLToPath(new URL("../../pdv-release.json", import.meta.url));
+const packagePath = fileURLToPath(new URL("../package.json", import.meta.url));
 
 test("classic blue identity module sets isolated name and userData", () => {
   assert.equal(fs.existsSync(identityPath), true, "pdv-product-identity.cjs must exist");
@@ -37,6 +38,16 @@ test("electron builder gives pdv-demo an independent Windows identity", () => {
   assert.equal(config.productName, "PDV Nexus Clássico Azul");
   assert.equal(config.artifactName, "PDV-Nexus-Classico-Azul-Setup-${version}.${ext}");
   assert.equal(config.nsis.shortcutName, "PDV Nexus Clássico Azul");
+});
+
+test("packaged Electron runtime matches the secured Windows 10 dependency", () => {
+  process.env.NEXUS_APP = "pdv-demo";
+  delete require.cache[require.resolve(builderPath)];
+  const config = require(builderPath);
+  const pkg = JSON.parse(fs.readFileSync(packagePath, "utf8"));
+  const securedVersion = String(pkg.devDependencies?.electron || "").replace(/^[~^]/, "");
+  assert.equal(securedVersion, "44.4.5");
+  assert.equal(config.electronVersion, securedVersion);
 });
 
 test("bootstrap applies classic identity before migration touches userData", () => {
