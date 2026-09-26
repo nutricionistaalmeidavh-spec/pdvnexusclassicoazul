@@ -46,6 +46,8 @@ module.exports = {
     "main.cjs",
     "pdv-lifecycle.cjs",
     "pdv-product-identity.cjs",
+    "artisys-upload.mjs",
+    "artisys-files.mjs",
     "preload.cjs",
     "package.json",
     {

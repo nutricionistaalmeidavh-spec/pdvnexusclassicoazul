@@ -1,8 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { createWorkspace } from "../apps/nexus-desktop/artisys-files.mjs";
+import { validateUploadBatch } from "../apps/nexus-desktop/artisys-upload.mjs";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const read = (relative) => fs.readFileSync(path.join(root, relative), "utf8");
@@ -56,6 +59,63 @@ test("classic presentation preserves existing business hooks", () => {
   assert.match(app, /event\.key === "F8"/);
   assert.match(app, /event\.key === "Delete"/);
   assert.match(app, /event\.key === "F12"/);
+});
+
+test("product registration supports one validated local product image", () => {
+  const app = read("apps/pdv-demo/src/PdvDemoApp.tsx");
+  const runtime = read("packages/desktop-runtime/src/index.ts");
+  const preload = read("apps/nexus-desktop/preload.cjs");
+  const desktop = read("apps/nexus-desktop/main.cjs");
+  const builder = read("apps/nexus-desktop/electron-builder.cjs");
+
+  assert.match(app, /imageRef/);
+  assert.match(app, /Selecionar foto/);
+  assert.match(app, /Remover foto/);
+  assert.match(app, /getDesktopPdvProductImageBridge/);
+  assert.match(runtime, /DesktopPdvProductImageBridge/);
+  assert.match(preload, /pdvProductImage/);
+  assert.match(desktop, /nexus-pdv-product-image:select/);
+  assert.match(desktop, /image\/jpeg/);
+  assert.match(desktop, /image\/png/);
+  assert.match(desktop, /image\/webp/);
+  assert.match(desktop, /5 \* 1024 \* 1024/);
+  assert.match(builder, /artisys-upload\.mjs/);
+  assert.match(builder, /artisys-files\.mjs/);
+});
+
+test("product image upload policy accepts only one JPG PNG or WebP up to 5 MB", () => {
+  const policy = { maxFiles: 1, maxFileSize: 5 * 1024 * 1024, accept: ["image/jpeg", "image/png", "image/webp"] };
+  const accepted = validateUploadBatch([{ name: "produto.webp", size: 1024, type: "image/webp" }], policy);
+  assert.equal(accepted.accepted.length, 1);
+  assert.equal(accepted.rejected.length, 0);
+
+  const invalidType = validateUploadBatch([{ name: "produto.gif", size: 1024, type: "image/gif" }], policy);
+  assert.deepEqual(invalidType.rejected[0].reasons, ["type-not-allowed"]);
+
+  const oversized = validateUploadBatch([{ name: "produto.jpg", size: 5 * 1024 * 1024 + 1, type: "image/jpeg" }], policy);
+  assert.deepEqual(oversized.rejected[0].reasons, ["file-too-large"]);
+
+  const tooMany = validateUploadBatch([
+    { name: "a.png", size: 100, type: "image/png" },
+    { name: "b.png", size: 100, type: "image/png" }
+  ], policy);
+  assert.equal(tooMany.accepted.length, 1);
+  assert.deepEqual(tooMany.rejected[0].reasons, ["too-many-files"]);
+});
+
+test("product image workspace persists locally and confines paths", async () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "pdv-product-image-"));
+  try {
+    const workspace = await createWorkspace(tempRoot);
+    const imageRef = "products/00101/foto.jpg";
+    await workspace.writeFile(imageRef, Buffer.from("image-bytes"));
+    assert.equal((await workspace.readFile(imageRef)).toString(), "image-bytes");
+    await assert.rejects(() => workspace.writeFile("../escape.jpg", Buffer.from("x")), /escapes root/);
+    await workspace.remove(imageRef);
+    await assert.rejects(() => workspace.readFile(imageRef));
+  } finally {
+    fs.rmSync(tempRoot, { recursive: true, force: true });
+  }
 });
 
 test("classic stylesheet declares the blue operational shell", () => {

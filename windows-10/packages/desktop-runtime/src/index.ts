@@ -120,6 +120,19 @@ export interface DesktopPrintingBridge {
   receipt(options: DesktopReceiptPrintOptions): Promise<{ success: boolean; failureReason: string }>;
 }
 
+export interface DesktopPdvProductImageResult {
+  canceled: boolean;
+  imageRef?: string;
+  imageUrl?: string;
+  fileName?: string;
+}
+
+export interface DesktopPdvProductImageBridge {
+  select(productCode: string): Promise<DesktopPdvProductImageResult>;
+  url(imageRef: string): Promise<string>;
+  remove(imageRef: string): Promise<boolean>;
+}
+
 declare global {
   interface Window {
     nexusDesktop?: {
@@ -135,6 +148,7 @@ declare global {
       pdvStore?: DesktopPdvStoreBridge;
       pdvSync?: DesktopPdvSyncBridge;
       pdvBackup?: DesktopPdvBackupBridge;
+      pdvProductImage?: DesktopPdvProductImageBridge;
       printing?: DesktopPrintingBridge;
     };
   }
@@ -231,6 +245,10 @@ export function getDesktopPdvSyncBridge(): DesktopPdvSyncBridge | undefined {
 
 export function getDesktopPdvBackupBridge(): DesktopPdvBackupBridge | undefined {
   return window.nexusDesktop?.pdvBackup;
+}
+
+export function getDesktopPdvProductImageBridge(): DesktopPdvProductImageBridge | undefined {
+  return window.nexusDesktop?.pdvProductImage;
 }
 
 export function getDesktopPrintingBridge(): DesktopPrintingBridge | undefined {
