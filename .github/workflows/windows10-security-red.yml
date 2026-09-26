@@ -1,0 +1,25 @@
+name: Windows 10 Security RED
+
+on:
+  push:
+    branches:
+      - security/windows10-high-vulns
+    paths:
+      - .github/workflows/windows10-security-red.yml
+
+permissions:
+  contents: read
+
+jobs:
+  audit-red:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: security/windows10-high-vulns
+      - name: Install Windows 10 dependencies
+        working-directory: windows-10
+        run: npm ci
+      - name: RED - no high vulnerabilities allowed
+        working-directory: windows-10
+        run: npm audit --audit-level=high
