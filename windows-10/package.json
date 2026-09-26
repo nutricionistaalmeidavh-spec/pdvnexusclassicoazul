@@ -25,7 +25,7 @@
     "desktop:dist:pdv": "npm run build:pdv-demo && npm run dist:pdv --workspace @nexus-core/nexus-desktop"
   },
   "devDependencies": {
-    "electron": "39.8.10",
+    "electron": "^44.4.5",
     "electron-builder": "^26.0.12",
     "typescript": "^5.6.3"
   }
