@@ -3,12 +3,34 @@ name: Windows 10 Electron Runtime Verify
 on:
   push:
     branches:
+      - main
       - fix/windows10-electron-runtime-44
     paths:
       - windows-10/apps/nexus-desktop/electron-builder.cjs
+      - windows-10/apps/nexus-desktop/electron-builder-pdv.cjs
+      - windows-10/apps/nexus-desktop/bootstrap.cjs
+      - windows-10/apps/nexus-desktop/pdv-product-identity.cjs
+      - windows-10/apps/pdv-demo/src/CustomerPresentationDecor.tsx
       - windows-10/package.json
       - windows-10/package-lock.json
       - windows-10/tests/pdv-classic-product-isolation.test.mjs
+      - windows-10/tests/pdv-classic-blue-ui.test.mjs
+      - windows-10/tests/pdv-packaging.test.mjs
+      - .github/workflows/windows10-electron-runtime-verify.yml
+  pull_request:
+    branches:
+      - main
+    paths:
+      - windows-10/apps/nexus-desktop/electron-builder.cjs
+      - windows-10/apps/nexus-desktop/electron-builder-pdv.cjs
+      - windows-10/apps/nexus-desktop/bootstrap.cjs
+      - windows-10/apps/nexus-desktop/pdv-product-identity.cjs
+      - windows-10/apps/pdv-demo/src/CustomerPresentationDecor.tsx
+      - windows-10/package.json
+      - windows-10/package-lock.json
+      - windows-10/tests/pdv-classic-product-isolation.test.mjs
+      - windows-10/tests/pdv-classic-blue-ui.test.mjs
+      - windows-10/tests/pdv-packaging.test.mjs
       - .github/workflows/windows10-electron-runtime-verify.yml
 
 permissions:
@@ -21,16 +43,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: fix/windows10-electron-runtime-44
           fetch-depth: 0
-
-      - name: Capture legacy tree
-        id: legacy
-        shell: pwsh
-        run: |
-          $tree = git rev-parse HEAD:windows-7
-          "tree=$tree" >> $env:GITHUB_OUTPUT
-          Write-Host "Legacy tree: $tree"
 
       - name: Install Windows 10 dependencies
         working-directory: windows-10
@@ -129,6 +142,9 @@ jobs:
       - name: Verify Windows 7 and 8 line untouched
         shell: pwsh
         run: |
+          git fetch origin main --depth=1
+          $base = git rev-parse origin/main:windows-7
           $after = git rev-parse HEAD:windows-7
-          if ($after -ne '${{ steps.legacy.outputs.tree }}') { throw 'windows-7 tree changed' }
-          git diff --exit-code HEAD -- windows-7
+          Write-Host "main windows-7 tree: $base"
+          Write-Host "current windows-7 tree: $after"
+          if ($after -ne $base) { throw 'windows-7 tree changed relative to main' }
