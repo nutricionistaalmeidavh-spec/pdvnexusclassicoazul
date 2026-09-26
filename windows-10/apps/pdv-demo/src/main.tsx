@@ -2,6 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { BatchPhysicalTrackingDecor } from "./BatchPhysicalTrackingDecor";
 import { CashierReferenceDecor } from "./CashierReferenceDecor";
+import { ClassicBlueChrome } from "./ClassicBlueChrome";
 import { CustomerPresentationDecor } from "./CustomerPresentationDecor";
 import { LabelBatchTools } from "./LabelBatchTools";
 import { PdvDemoApp } from "./PdvDemoApp";
@@ -14,11 +15,12 @@ import "./pdv-cashier-v3.css";
 import "./pdv-e55.css";
 import "./pdv-observation-layout-fix.css";
 import "./pdv-cashier-legibility-fix.css";
+import "./pdv-classic-blue.css";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <div className="pdv-density-root" data-cashier-layout="dense-v2">
-      <div className="pdv-operation-title" role="heading" aria-level={1}>VENDA (PDV)</div>
+    <div className="pdv-density-root" data-cashier-layout="classic-blue">
+      <ClassicBlueChrome />
       <CashierReferenceDecor />
       <CustomerPresentationDecor />
       <SaleObservationDecor />
