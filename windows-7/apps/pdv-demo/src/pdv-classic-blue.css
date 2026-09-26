@@ -80,3 +80,5 @@ body { background: #c8c8c8; color: var(--classic-text); font-family: Tahoma, "Se
 .classic-blue-function-key:disabled { color: #777; background: #ddd; }
 @media (max-width: 980px) { .classic-blue-sale-head { grid-template-columns: 1fr; } .classic-blue-sale-meta { justify-content: start; } .classic-blue-workspace { grid-template-columns: minmax(0, 1fr) 220px; } .classic-blue-table-head, .classic-blue-item-row { grid-template-columns: 76px minmax(180px, 1fr) 68px 80px 90px; } .classic-blue-function-bar { grid-template-columns: repeat(5, minmax(72px, 1fr)); } }
 @media (max-width: 760px) { .classic-blue-workspace { grid-template-columns: 1fr; } .classic-blue-summary { grid-template-columns: repeat(3, 1fr); grid-template-rows: auto; } .classic-blue-product-preview { grid-column: 1 / -1; } .classic-blue-event { grid-column: 1 / -1; } .classic-blue-payment-panel { grid-template-columns: 1fr; } .classic-blue-function-bar { grid-template-columns: repeat(2, 1fr); } .classic-blue-statusbar { grid-template-columns: 1fr 1fr; height: 44px; } .pdv-density-root[data-cashier-layout="classic-blue"] { padding-bottom: 44px; } }
+
+.classic-blue-items-table { min-width: 0; }

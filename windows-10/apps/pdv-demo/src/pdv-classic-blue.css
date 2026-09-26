@@ -543,3 +543,5 @@ body {
   .classic-blue-statusbar { grid-template-columns: 1fr 1fr; height: 44px; }
   .pdv-density-root[data-cashier-layout="classic-blue"] { padding-bottom: 44px; }
 }
+
+.classic-blue-items-table { min-width: 0; }

@@ -295,7 +295,7 @@ export function PdvDemoApp() {
     return () => { offData(); offError(); };
   }, [scaleBrand, serialBridge]);
   useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => { if (event.key === "F2") { event.preventDefault(); startNewSale(); } if (event.key === "F3") { event.preventDefault(); checkoutSearchRef.current?.focus(); } if (event.key === "F6") { event.preventDefault(); applyQuickPayment("A VISTA"); } if (event.key === "Delete") { event.preventDefault(); removeLastItem(); } if (event.key === "F8") { event.preventDefault(); finalizeSale(); } };
+    const onKeyDown = (event: KeyboardEvent) => { if (event.key === "F2") { event.preventDefault(); startNewSale(); } if (event.key === "F3") { event.preventDefault(); checkoutSearchRef.current?.focus(); } if (event.key === "F6") { event.preventDefault(); applyQuickPayment("A VISTA"); } if (event.key === "Delete") { event.preventDefault(); removeLastItem(); } if (event.key === "F8") { event.preventDefault(); finalizeSale(); } if (event.key === "F12") { event.preventDefault(); finalizeSale(); } };
     window.addEventListener("keydown", onKeyDown); return () => window.removeEventListener("keydown", onKeyDown);
   });
 
@@ -470,15 +470,81 @@ export function PdvDemoApp() {
 
   return (
     <AppShell title="Nexus Core - Professional Backoffice PDV" nav={nav} sidebarPosition="right" sidebarTitle="Gestão" hideTitle={route === "/caixa"}>
-      {route === "/caixa" ? <section style={styles.cashierSurface}>
-        <div style={styles.cashierMainPanel}>
-          <div style={styles.cashierBanner}><div><p style={styles.cashierEyebrow}>{cashStatus} / {terminalConfig.terminalName}</p><h2 style={styles.cashierTitle}>Caixa de venda</h2><p style={styles.cashierSubtitle}>{lastEvent}</p></div><div style={styles.cashierStatusGrid}><div style={styles.cashierStatusTile}><span>Venda</span><strong>{sale?.number ?? "------"}</strong></div><div style={styles.cashierStatusTile}><span>Operador</span><strong>{activeOperator.name}</strong></div><div style={styles.cashierStatusTile}><span>Itens</span><strong>{itemCount.toFixed(3)}</strong></div></div></div>
-          <div style={styles.cashierToolbar}><input ref={checkoutSearchRef} autoFocus value={entryValue} onChange={(event) => setEntryValue(event.target.value)} onKeyDown={(event) => event.key === "Enter" ? handleEntrySubmit() : null} placeholder="Bipe, digite codigo, barras ou nome exato" style={styles.cashierSearchInput} /><button onClick={handleEntrySubmit} style={styles.cashierAddButton}>Adicionar</button><button onClick={openCash} style={styles.cashierSecondaryAction} disabled={Boolean(cashSession && !cashSession.closedAt)}>{cashSession && !cashSession.closedAt ? "Caixa aberto" : "Abrir caixa"}</button><button onClick={() => setCashierScaleOpen((current) => !current)} style={styles.cashierSecondaryAction}>Pesar</button></div>
-          {cashierScaleOpen ? <div style={styles.cashierScalePanel}><input value={cashierScaleProductCode} onChange={(event) => setCashierScaleProductCode(event.target.value)} placeholder="Código do produto vendido por peso" style={styles.cashierSearchInput} /><button onClick={() => void requestCashierWeight()} style={styles.cashierAddButton}>Solicitar peso</button><button onClick={() => addScaleWeightToCashier(cashierScaleProductCode)} style={styles.cashierSecondaryAction}>Lançar leitura</button></div> : null}
-          <div style={styles.categoryStrip}>{checkoutCategories.map((category) => <button key={category} onClick={() => setSelectedCategory(category)} style={category === selectedCategory ? styles.categoryButtonActive : styles.categoryButton}>{category}</button>)}</div>
-          <div style={styles.productGrid}>{checkoutProducts.map((product) => { const promotion = describeProductPromotion(product, catalogProducts, promotionGroups); return <button key={product.productCode} onClick={() => addCatalogProduct(product)} style={styles.productTile} disabled={product.stock <= 0}><span style={styles.productBadge}>{product.variantLabel || product.unitLabel}</span><strong>{product.productName}</strong><small>{product.category} / Estoque {product.stock.toLocaleString("pt-BR", { maximumFractionDigits: 3 })}</small><span style={styles.productPrice}>{formatCurrency(product.unitPrice)}</span>{promotion !== "-" ? <small style={styles.promoText}>{promotion}</small> : null}</button>; })}{checkoutProducts.length ? null : <div style={styles.cashierEmptyState}>Nenhum produto encontrado para esse filtro.</div>}</div>
+      {route === "/caixa" ? <section className="classic-blue-cashier" data-classic-blue="cashier">
+        <div className="classic-blue-operation-title">VENDA (PDV)</div>
+        <header className="classic-blue-sale-head">
+          <label className="classic-blue-field">
+            <span>Cliente:</span>
+            <select id="classic-blue-customer" value={selectedCustomerId} onChange={(event) => setSelectedCustomerId(event.target.value)}>
+              {registeredCustomers.map((customer) => <option key={customer.id} value={customer.id}>{customer.name}</option>)}
+            </select>
+          </label>
+          <label className="classic-blue-field classic-blue-code-field">
+            <span>Código:</span>
+            <input ref={checkoutSearchRef} autoFocus value={entryValue} onChange={(event) => setEntryValue(event.target.value)} onKeyDown={(event) => event.key === "Enter" ? handleEntrySubmit() : null} placeholder="Código, barras ou nome exato" />
+            <button type="button" className="classic-blue-command-button" onClick={handleEntrySubmit}>Incluir</button>
+          </label>
+          <div className="classic-blue-sale-meta">
+            <span>Venda:</span><strong>{sale?.number ?? "------"}</strong>
+            <span>Operador:</span><strong>{activeOperator.name}</strong>
+            <span>Caixa:</span><strong>{terminalConfig.terminalId}</strong>
+            <span>Status:</span><strong>{cashStatus}</strong>
+          </div>
+        </header>
+
+        <div className="classic-blue-workspace">
+          <section className="classic-blue-items classic-blue-items-table" aria-label="Itens da venda">
+            <div className="classic-blue-section-title">ITENS DA VENDA</div>
+            <div className="classic-blue-table-head"><span>Código</span><span>Descrição do Produto</span><span>Qtde.</span><span>Unitário</span><span>Total</span></div>
+            <div className="classic-blue-table-body">
+              {(sale?.items ?? []).map((item) => <div className="classic-blue-item-row" key={item.id}>
+                <span>{item.productCode}</span>
+                <span title={item.productName}>{item.productName}</span>
+                <span className="num">{item.quantity.toFixed(item.unitLabel === "KG" ? 3 : 0)} {item.unitLabel}</span>
+                <span className="num">{formatCurrency(item.unitPrice)}</span>
+                <span className="num">{formatCurrency(item.totalPrice)}</span>
+              </div>)}
+              {sale?.items.length ? null : <div className="classic-blue-empty-row">{sale ? "Venda aberta. Digite ou bipe um produto." : "Pressione F2 para iniciar uma nova venda."}</div>}
+            </div>
+            <div className="classic-blue-payment-panel">
+              <div className="classic-blue-payment-editor">
+                {(sale?.payments ?? []).map((payment, index) => <div className="classic-blue-payment-line" key={`${payment.method}-${index}`}>
+                  <select value={payment.method} onChange={(event) => updatePayment(index, { method: event.target.value as PaymentMethod })} disabled={!sale}>{activePaymentOptions.map((option) => <option key={option.name} value={option.name}>{option.name}</option>)}</select>
+                  <input type="number" min="0" step="0.01" value={String(payment.amount)} onChange={(event) => updatePayment(index, { amount: Number(event.target.value) || 0 })} disabled={!sale} />
+                  <button type="button" onClick={() => fillPaymentRemaining(index)} disabled={!sale}>Restante</button>
+                </div>)}
+                <button type="button" className="classic-blue-mini-button" onClick={() => addPayment()} disabled={!sale}>+ Forma</button>
+              </div>
+              <div className="classic-blue-payment-quick">{paymentQuickMethods.map((method) => <button type="button" key={method} onClick={() => applyQuickPayment(method)} disabled={!sale}>{method}</button>)}</div>
+              <label className="classic-blue-discount"><span>Desconto %</span><input id="classic-blue-discount" value={String(sale?.discountPercent ?? 0)} onChange={(event) => updateDiscountPercent(Number(event.target.value) || 0)} disabled={!sale} /></label>
+            </div>
+          </section>
+
+          <aside className="classic-blue-summary">
+            <div className="classic-blue-product-preview">
+              <h3>{(sale?.items ?? []).slice(-1)[0]?.productName ?? "Produto"}</h3>
+              <div className="classic-blue-product-placeholder">{((sale?.items ?? []).slice(-1)[0]?.productName ?? "PDV").slice(0, 2).toUpperCase()}</div>
+              <small>{(sale?.items ?? []).slice(-1)[0] ? `Último item: ${(sale?.items ?? []).slice(-1)[0].productCode}` : "Aguardando leitura de produto"}</small>
+            </div>
+            <div className="classic-blue-total-card total"><span>TOTAL</span><strong>{formatCurrency(netTotal)}</strong></div>
+            <div className="classic-blue-total-card received"><span>RECEBIDO</span><strong>{formatCurrency(paidTotal)}</strong></div>
+            <div className="classic-blue-total-card change"><span>TROCO</span><strong>{formatCurrency(change)}</strong></div>
+            <div className="classic-blue-event"><strong>{itemCount.toFixed(3)} item(ns)</strong><br />Subtotal {formatCurrency(grossTotal)} · Desconto {formatCurrency(discountValue)} · Falta {formatCurrency(remainingTotal)}<br />{lastEvent}</div>
+          </aside>
         </div>
-        <aside style={styles.orderPanel}><div style={styles.orderHeader}><div><p style={styles.cashierEyebrow}>Pedido atual</p><h3 style={styles.orderTitle}>{activeCustomer.name}</h3></div><button onClick={() => startNewSale()} style={styles.iconActionButton}>F2</button></div><select value={selectedCustomerId} onChange={(event) => setSelectedCustomerId(event.target.value)} style={styles.input}>{registeredCustomers.map((customer) => <option key={customer.id} value={customer.id}>{customer.name}</option>)}</select><div style={styles.orderItems}>{(sale?.items ?? []).map((item) => <div key={item.id} style={styles.orderItem}><div><strong>{item.productName}</strong><span>{item.quantity.toFixed(item.unitLabel === "KG" ? 3 : 0)} {item.unitLabel} x {formatCurrency(item.unitPrice)}</span>{item.pricingLabel ? <small style={styles.promoText}>{item.pricingLabel} · economia {formatCurrency(item.promotionDiscount ?? 0)}</small> : null}</div><div style={{ display: "grid", gap: "5px", justifyItems: "end" }}>{item.source === "catalog" && item.unitLabel === "UN" ? <div style={{ display: "flex", alignItems: "center", gap: "6px" }}><button type="button" aria-label={`Diminuir quantidade de ${item.productName}`} onClick={() => adjustSaleItemQuantity(item.id, -1)} style={{ width: "28px", height: "28px", border: "1px solid #cbd5e1", borderRadius: "5px", background: "#ffffff", cursor: "pointer", fontWeight: 900 }}>−</button><strong style={{ minWidth: "20px", textAlign: "center" }}>{item.quantity.toFixed(0)}</strong><button type="button" aria-label={`Aumentar quantidade de ${item.productName}`} onClick={() => adjustSaleItemQuantity(item.id, 1)} disabled={item.quantity >= (catalogProducts.find((product) => product.productCode === item.productCode)?.stock ?? 0)} style={{ width: "28px", height: "28px", border: "1px solid #cbd5e1", borderRadius: "5px", background: "#ffffff", cursor: "pointer", fontWeight: 900 }}>+</button></div> : null}<strong>{formatCurrency(item.totalPrice)}</strong></div></div>)}{sale?.items.length ? null : <div style={styles.cashierEmptyState}>{sale ? "Venda aberta. Adicione produtos." : "Pressione F2 ou clique em um produto para iniciar."}</div>}</div><div style={styles.orderTotals}><div><span>Subtotal</span><strong>{formatCurrency(grossTotal)}</strong></div>{comboSavings > 0 ? <div><span>Economia em combos</span><strong>{formatCurrency(comboSavings)}</strong></div> : null}<div><span>Desconto</span><strong>{formatCurrency(discountValue)}</strong></div><div><span>Pago</span><strong>{formatCurrency(paidTotal)}</strong></div><div><span>Falta</span><strong>{formatCurrency(remainingTotal)}</strong></div><div><span>Troco</span><strong>{formatCurrency(change)}</strong></div></div><div style={styles.orderGrandTotal}>{formatCurrency(netTotal)}</div><div style={styles.paymentQuickGrid}>{paymentQuickMethods.map((method) => <button key={method} onClick={() => applyQuickPayment(method)} style={["PIX", "CREDITO", "DEBITO"].includes(method) ? styles.manualPaymentButton : styles.paymentButton} disabled={!sale}>{method}</button>)}</div><div style={styles.manualCaptureNotice}>PIX/cartao: caixa cobra na maquininha/QR Code externo e confirma aqui como recebido.</div>{paymentView.errorMessage ? <div style={styles.paymentAlert}>{paymentView.errorMessage}</div> : null}<div style={styles.stack}>{(sale?.payments ?? []).map((payment, index) => <div key={`${payment.method}-${index}`} style={styles.paymentCard}><label style={styles.label}><span>Forma {index + 1}</span><select value={payment.method} onChange={(event) => updatePayment(index, { method: event.target.value as PaymentMethod })} style={styles.input} disabled={!sale}>{activePaymentOptions.map((option) => <option key={option.name} value={option.name}>{option.name}</option>)}</select></label><label style={styles.label}><span>Valor</span><input type="number" min="0" step="0.01" value={String(payment.amount)} onChange={(event) => updatePayment(index, { amount: Number(event.target.value) || 0 })} style={styles.input} disabled={!sale} /></label><div style={styles.paymentActions}><button onClick={() => fillPaymentRemaining(index)} style={styles.secondaryButton} disabled={!sale}>Restante</button><button onClick={() => removePayment(index)} style={styles.secondaryButton} disabled={!sale || (sale?.payments.length ?? 0) <= 1}>Remover</button></div></div>)}</div><button onClick={() => addPayment()} style={styles.secondaryButton} disabled={!sale}>Adicionar Forma</button><label style={styles.label}><span>Desconto geral %</span><input value={String(sale?.discountPercent ?? 0)} onChange={(event) => updateDiscountPercent(Number(event.target.value) || 0)} style={styles.input} disabled={!sale} /></label><div style={styles.bigActionGrid}><button onClick={() => startNewSale()} style={styles.bigShortcutButton}>F2<br />Nova venda</button><button onClick={() => checkoutSearchRef.current?.focus()} style={styles.bigShortcutButton}>F3<br />Produto</button><button onClick={() => applyQuickPayment("A VISTA")} style={styles.bigShortcutButton}>F6<br />Pagamento</button><button onClick={finalizeSale} style={styles.bigFinishButton} disabled={!sale}>F8<br />Finalizar</button></div><button onClick={removeLastItem} style={styles.removeItemButton} disabled={!sale || sale.items.length === 0}>Delete / Remover ultimo item</button></aside>
+
+        <footer className="classic-blue-function-bar" aria-label="Teclas de função">
+          <button type="button" className="classic-blue-function-key" onClick={() => startNewSale()}><b>F2</b><span>Nova venda</span></button>
+          <button type="button" className="classic-blue-function-key" onClick={() => checkoutSearchRef.current?.focus()}><b>F3</b><span>Produto</span></button>
+          <button type="button" className="classic-blue-function-key" onClick={() => document.querySelector<HTMLSelectElement>("#classic-blue-customer")?.focus()}><b>F4</b><span>Cliente</span></button>
+          <button type="button" className="classic-blue-function-key" onClick={() => document.querySelector<HTMLInputElement>("#classic-blue-discount")?.focus()} disabled={!sale}><b>F5</b><span>Desconto</span></button>
+          <button type="button" className="classic-blue-function-key" onClick={() => applyQuickPayment("A VISTA")} disabled={!sale}><b>F6</b><span>Pagamento</span></button>
+          <button type="button" className="classic-blue-function-key" onClick={() => document.querySelector<HTMLSelectElement>(".classic-blue-payment-line select")?.focus()} disabled={!sale}><b>F7</b><span>Recebimentos</span></button>
+          <button type="button" className="classic-blue-function-key finish" onClick={finalizeSale} disabled={!sale}><b>F8</b><span>Finalizar</span></button>
+          <button type="button" className="classic-blue-function-key danger" onClick={removeLastItem} disabled={!sale || sale.items.length === 0}><b>Del</b><span>Cancelar item</span></button>
+          <button type="button" className="classic-blue-function-key" onClick={() => { window.location.hash = "/financeiro"; }}><b>F9</b><span>Sangria / Caixa</span></button>
+          <button type="button" className="classic-blue-function-key finish" onClick={finalizeSale} disabled={!sale}><b>F12</b><span>Finalizar venda</span></button>
+        </footer>
       </section> : null}
 
       {route === "/produtos" ? <section style={styles.pageGrid}>
