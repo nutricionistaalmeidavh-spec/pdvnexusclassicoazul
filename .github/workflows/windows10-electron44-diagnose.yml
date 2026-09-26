@@ -31,13 +31,16 @@ jobs:
           $env:NEXUS_APP = "pdv-demo"
           $env:ELECTRON_ENABLE_LOGGING = "1"
           $env:ELECTRON_ENABLE_STACK_DUMPING = "1"
-          $exe = (Resolve-Path "node_modules/electron/dist/electron.exe").Path
+          $exe = (node -p "require('electron')").Trim()
+          Write-Host "Resolved Electron executable: $exe"
+          if (-not (Test-Path $exe)) { throw "Resolved Electron executable does not exist: $exe" }
           $stdout = Join-Path $PWD "electron44-stdout.log"
           $stderr = Join-Path $PWD "electron44-stderr.log"
           $process = Start-Process -FilePath $exe -ArgumentList @("apps/nexus-desktop") -PassThru -RedirectStandardOutput $stdout -RedirectStandardError $stderr
           Start-Sleep -Seconds 8
           $process.Refresh()
-          Write-Host "HasExited=$($process.HasExited) MainWindowTitle=$($process.MainWindowTitle) MainWindowHandle=$($process.MainWindowHandle)"
+          $title = $process.MainWindowTitle
+          Write-Host "HasExited=$($process.HasExited) MainWindowTitle=$title MainWindowHandle=$($process.MainWindowHandle)"
           Write-Host "=== STDERR ==="
           if (Test-Path $stderr) { Get-Content $stderr -Raw }
           Write-Host "=== STDOUT ==="
@@ -46,4 +49,4 @@ jobs:
             $null = $process.CloseMainWindow()
             if (-not $process.WaitForExit(3000)) { $process.Kill() }
           }
-          if ($process.MainWindowTitle -eq "Error") { throw "Electron 44 opened main-process Error dialog; diagnostics printed above" }
+          if ($title -eq "Error") { throw "Electron 44 opened main-process Error dialog; diagnostics printed above" }
