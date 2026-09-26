@@ -1,0 +1,348 @@
+name: Execute Classic Blue Phases 0-3 v2
+
+on:
+  push:
+    branches:
+      - work/fases-0-3-classico-azul
+    paths:
+      - .github/workflows/classic-blue-execute-fases-0-3-v2.yml
+
+permissions:
+  contents: write
+
+env:
+  SOURCE_REPO: nutricionistaalmeidavh-spec/PDVNexus
+  SOURCE_SHA: 07d7bba2f184e298cb53fa1d3d1a24b37539e844
+  TARGET_BRANCH: work/fases-0-3-classico-azul
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout isolated destination branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TARGET_BRANCH }}
+          fetch-depth: 0
+
+      - name: Import exact source snapshot in read-only mode
+        shell: bash
+        run: |
+          set -euo pipefail
+          SRC="$RUNNER_TEMP/pdvnexus-source-readonly"
+          git clone --filter=blob:none "https://github.com/${SOURCE_REPO}.git" "$SRC"
+          git -C "$SRC" checkout --detach "$SOURCE_SHA"
+          test "$(git -C "$SRC" rev-parse HEAD)" = "$SOURCE_SHA"
+          git -C "$SRC" remote set-url --push origin DISABLED
+          test "$(git -C "$SRC" remote get-url --push origin)" = "DISABLED"
+
+          git -C "$SRC" archive "$SOURCE_SHA" | tar -x -f -
+
+          cat > SOURCE_PROVENANCE.md <<'EOF'
+          source_repository=nutricionistaalmeidavh-spec/PDVNexus
+          source_branch=main
+          source_commit=07d7bba2f184e298cb53fa1d3d1a24b37539e844
+          destination_repository=nutricionistaalmeidavh-spec/pdvnexusclassicoazul
+          EOF
+
+          test -f windows-10/package.json
+          test -f windows-7/package.json
+          test -f pdv-release.json
+          test -f .github/workflows/publish-pdv-release.yml
+          test -f docs/superpowers/specs/2026-09-26-pdv-nexus-classico-azul-bootstrap-design.md
+          test -f docs/superpowers/plans/2026-09-26-pdv-nexus-classico-azul-fases-0-3.md
+
+          remote_url="$(git remote get-url origin)"
+          remote_url="${remote_url%.git}"
+          test "$remote_url" = "https://github.com/nutricionistaalmeidavh-spec/pdvnexusclassicoazul"
+          ! git remote -v | grep -F 'nutricionistaalmeidavh-spec/PDVNexus.git'
+
+      - name: Commit Task 1 without workflow-directory writes
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A -- . ':(exclude).github/workflows/**'
+          git commit -m "chore: import PDV Nexus snapshot for classic blue edition"
+
+      - name: Write isolation tests first
+        shell: bash
+        run: |
+          set -euo pipefail
+          for line in windows-10 windows-7; do
+            cat > "$line/tests/pdv-classic-product-isolation.test.mjs" <<'EOF'
+          import assert from "node:assert/strict";
+          import fs from "node:fs";
+          import path from "node:path";
+          import { createRequire } from "node:module";
+          import { fileURLToPath } from "node:url";
+          import test from "node:test";
+
+          const require = createRequire(import.meta.url);
+          const desktopDir = fileURLToPath(new URL("../apps/nexus-desktop/", import.meta.url));
+          const identityPath = path.join(desktopDir, "pdv-product-identity.cjs");
+          const bootstrapPath = path.join(desktopDir, "bootstrap.cjs");
+          const mainPath = path.join(desktopDir, "main.cjs");
+          const builderPath = path.join(desktopDir, "electron-builder.cjs");
+          const pdvBuilderPath = path.join(desktopDir, "electron-builder-pdv.cjs");
+          const releasePath = fileURLToPath(new URL("../../pdv-release.json", import.meta.url));
+
+          test("classic blue identity module sets isolated name and userData", () => {
+            assert.equal(fs.existsSync(identityPath), true, "pdv-product-identity.cjs must exist");
+            const { applyPdvProductIdentity } = require(identityPath);
+            const calls = [];
+            const fakeApp = {
+              getPath(name) { assert.equal(name, "appData"); return "C:\\Users\\qa\\AppData\\Roaming"; },
+              setName(value) { calls.push(["name", value]); },
+              setPath(name, value) { calls.push([name, value]); }
+            };
+            applyPdvProductIdentity(fakeApp, path.win32);
+            assert.deepEqual(calls[0], ["name", "PDV Nexus Clássico Azul"]);
+            assert.equal(calls[1][0], "userData");
+            assert.equal(path.win32.basename(calls[1][1]), "PDV Nexus Classico Azul");
+          });
+
+          test("electron builder gives pdv-demo an independent Windows identity", () => {
+            process.env.NEXUS_APP = "pdv-demo";
+            delete require.cache[require.resolve(builderPath)];
+            const config = require(builderPath);
+            assert.equal(config.appId, "com.artisys.pdvnexus.classicoazul");
+            assert.equal(config.productName, "PDV Nexus Clássico Azul");
+            assert.equal(config.artifactName, "PDV-Nexus-Classico-Azul-Setup-${version}.${ext}");
+            assert.equal(config.nsis.shortcutName, "PDV Nexus Clássico Azul");
+          });
+
+          test("bootstrap applies classic identity before migration touches userData", () => {
+            const source = fs.readFileSync(bootstrapPath, "utf8");
+            const applyIndex = source.indexOf("applyPdvProductIdentity(app, path)");
+            const migrationIndex = source.indexOf("preparePdvVersionMigration({");
+            assert.ok(applyIndex >= 0, "bootstrap must apply classic identity");
+            assert.ok(migrationIndex >= 0, "bootstrap must retain migration guard");
+            assert.ok(applyIndex < migrationIndex, "identity must be applied before migration reads userData");
+          });
+
+          test("runtime title is classic blue", () => {
+            const source = fs.readFileSync(mainPath, "utf8");
+            assert.match(source, /"pdv-demo":\s*\{\s*title:\s*"PDV Nexus Clássico Azul"/m);
+          });
+
+          test("pdv package metadata does not embed original updater", () => {
+            process.env.NEXUS_APP = "pdv-demo";
+            delete require.cache[require.resolve(pdvBuilderPath)];
+            const config = require(pdvBuilderPath);
+            assert.equal(config.extraMetadata?.pdvUpdateChannel, undefined);
+            assert.equal(config.extraMetadata?.pdvUpdateManifestUrl, undefined);
+            const release = JSON.parse(fs.readFileSync(releasePath, "utf8"));
+            assert.equal(release.version, "0.1.19");
+            assert.equal(release.manifestUrl, null);
+            assert.deepEqual(release.distribution, {});
+            const serialized = JSON.stringify(release);
+            assert.doesNotMatch(serialized, /PDVNexus\/releases\/latest\/download/);
+            assert.doesNotMatch(serialized, /1M0_SfF1h_zUqEM-Ns1HJ8ZtCMMcbHnFr/);
+          });
+          EOF
+          done
+
+      - name: Verify RED before implementation
+        shell: bash
+        run: |
+          set +e
+          (cd windows-10 && node --test tests/pdv-classic-product-isolation.test.mjs) > "$RUNNER_TEMP/red-win10.log" 2>&1
+          rc10=$?
+          (cd windows-7 && node --test tests/pdv-classic-product-isolation.test.mjs) > "$RUNNER_TEMP/red-win7.log" 2>&1
+          rc7=$?
+          set -e
+          echo "windows-10 RED exit=$rc10"
+          tail -n 25 "$RUNNER_TEMP/red-win10.log"
+          echo "windows-7 RED exit=$rc7"
+          tail -n 25 "$RUNNER_TEMP/red-win7.log"
+          test "$rc10" -ne 0
+          test "$rc7" -ne 0
+
+      - name: Implement independent identity after RED
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import json
+
+          for line in ('windows-10', 'windows-7'):
+              desktop = Path(line) / 'apps/nexus-desktop'
+              (desktop / 'pdv-product-identity.cjs').write_text('''function applyPdvProductIdentity(app, pathModule) {\n  app.setName("PDV Nexus Clássico Azul");\n  app.setPath("userData", pathModule.join(app.getPath("appData"), "PDV Nexus Classico Azul"));\n}\n\nmodule.exports = { applyPdvProductIdentity };\n''', encoding='utf-8')
+
+              bootstrap = desktop / 'bootstrap.cjs'
+              text = bootstrap.read_text(encoding='utf-8-sig')
+              lifecycle = 'const { preparePdvVersionMigration, startPdvAutoUpdater } = require("./pdv-lifecycle.cjs");\n'
+              assert lifecycle in text
+              text = text.replace(lifecycle, lifecycle + 'const { applyPdvProductIdentity } = require("./pdv-product-identity.cjs");\n', 1)
+              marker = 'const isPdv = process.env.NEXUS_APP === "pdv-demo" || Boolean(pkg.pdvUpdateChannel);\n'
+              assert marker in text
+              text = text.replace(marker, marker + 'if (isPdv) {\n  applyPdvProductIdentity(app, path);\n}\n', 1)
+              bootstrap.write_text(text, encoding='utf-8')
+
+              main = desktop / 'main.cjs'
+              text = main.read_text(encoding='utf-8-sig')
+              old = '"pdv-demo": {\n    title: "PDV Nexus"\n  }'
+              assert old in text
+              main.write_text(text.replace(old, '"pdv-demo": {\n    title: "PDV Nexus Clássico Azul"\n  }', 1), encoding='utf-8')
+
+              builder = desktop / 'electron-builder.cjs'
+              text = builder.read_text(encoding='utf-8-sig')
+              for old, new in {
+                  'appId: "com.nexuscore.pdv"': 'appId: "com.artisys.pdvnexus.classicoazul"',
+                  'productName: "PDV Nexus"': 'productName: "PDV Nexus Clássico Azul"',
+                  'artifactName: "PDV-Nexus-Setup-${version}.${ext}"': 'artifactName: "PDV-Nexus-Classico-Azul-Setup-${version}.${ext}"',
+                  'shortcutName: "PDV Nexus"': 'shortcutName: selectedKey === "pdv-demo" ? "PDV Nexus Clássico Azul" : "PDV Nexus"',
+              }.items():
+                  assert old in text, (line, old)
+                  text = text.replace(old, new, 1)
+              builder.write_text(text, encoding='utf-8')
+
+              (desktop / 'electron-builder-pdv.cjs').write_text('''process.env.NEXUS_APP = "pdv-demo";\nconst release = require("../../../pdv-release.json");\nconst base = require("./electron-builder.cjs");\n\nmodule.exports = {\n  ...base,\n  extraMetadata: {\n    ...(base.extraMetadata || {}),\n    version: release.version\n  }\n};\n''', encoding='utf-8')
+
+          release = Path('pdv-release.json')
+          current = json.loads(release.read_text(encoding='utf-8-sig'))
+          assert current['schemaVersion'] == 1 and current['version'] == '0.1.19'
+          release.write_text(json.dumps({'schemaVersion': 1, 'version': '0.1.19', 'manifestUrl': None, 'distribution': {}}, indent=2, ensure_ascii=False) + '\n', encoding='utf-8')
+          PY
+
+      - name: Verify GREEN and dangerous-reference scan
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd windows-10 && node --test tests/pdv-classic-product-isolation.test.mjs)
+          (cd windows-7 && node --test tests/pdv-classic-product-isolation.test.mjs)
+          for line in windows-10 windows-7; do
+            files=("$line/apps/nexus-desktop/bootstrap.cjs" "$line/apps/nexus-desktop/main.cjs" "$line/apps/nexus-desktop/electron-builder.cjs" "$line/apps/nexus-desktop/electron-builder-pdv.cjs" "$line/apps/nexus-desktop/pdv-product-identity.cjs" pdv-release.json)
+            ! grep -F 'com.nexuscore.pdv' "${files[@]}"
+            ! grep -F 'PDV-Nexus-Setup' "${files[@]}"
+            ! grep -F 'PDVNexus/releases/latest/download' "${files[@]}"
+            ! grep -F '1M0_SfF1h_zUqEM-Ns1HJ8ZtCMMcbHnFr' "${files[@]}"
+          done
+
+      - name: Commit Task 2 and push non-workflow changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add -A -- . ':(exclude).github/workflows/**'
+          git commit -m "feat: isolate PDV Nexus classic blue product identity"
+          git push origin "HEAD:${TARGET_BRANCH}"
+
+  baseline-windows:
+    needs: prepare
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout prepared branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TARGET_BRANCH }}
+          fetch-depth: 0
+
+      - name: Supply frozen release-contract workflow locally only
+        shell: pwsh
+        run: |
+          git clone --filter=blob:none "https://github.com/$env:SOURCE_REPO.git" "$env:RUNNER_TEMP\source-contract"
+          git -C "$env:RUNNER_TEMP\source-contract" checkout --detach $env:SOURCE_SHA
+          New-Item -ItemType Directory -Force .github\workflows | Out-Null
+          Copy-Item "$env:RUNNER_TEMP\source-contract\.github\workflows\publish-pdv-release.yml" .github\workflows\publish-pdv-release.yml -Force
+
+      - name: Install exact dependencies
+        working-directory: windows-10
+        run: npm ci
+      - name: Typecheck
+        working-directory: windows-10
+        run: npm run typecheck
+      - name: Payment tests
+        working-directory: windows-10
+        run: npm run test:pdv-payments
+      - name: Upgrade and release-contract tests
+        working-directory: windows-10
+        run: npm run test:pdv-upgrade
+      - name: Classic isolation test
+        working-directory: windows-10
+        run: node --test tests/pdv-classic-product-isolation.test.mjs
+      - name: Build PDV renderer
+        working-directory: windows-10
+        run: npm run build:pdv-demo
+
+      - name: Automated identity smoke and baseline record
+        shell: pwsh
+        run: |
+          node -e "const path=require('node:path');const {applyPdvProductIdentity}=require('./windows-10/apps/nexus-desktop/pdv-product-identity.cjs');const c=[];const app={getPath:n=>{if(n!=='appData')throw Error(n);return 'C:\\Users\\qa\\AppData\\Roaming'},setName:v=>c.push(['name',v]),setPath:(n,v)=>c.push([n,v])};applyPdvProductIdentity(app,path.win32);if(c[0][1]!=='PDV Nexus Clássico Azul'||path.win32.basename(c[1][1])!=='PDV Nexus Classico Azul')process.exit(2);console.log(JSON.stringify(c))"
+          $testedSha = git rev-parse HEAD
+          @"
+          # Baseline — fases 0–3
+
+          - Source repository: `nutricionistaalmeidavh-spec/PDVNexus`
+          - Source snapshot: `07d7bba2f184e298cb53fa1d3d1a24b37539e844`
+          - Destination repository: `nutricionistaalmeidavh-spec/pdvnexusclassicoazul`
+          - Destination branch: `work/fases-0-3-classico-azul`
+          - Tested destination SHA: `$testedSha`
+          - Runner: GitHub Actions `windows-latest`
+
+          ## Gates
+          - `npm ci`: PASS
+          - `npm run typecheck`: PASS
+          - `npm run test:pdv-payments`: PASS
+          - `npm run test:pdv-upgrade`: PASS
+          - isolation test: PASS
+          - `npm run build:pdv-demo`: PASS
+          - automated identity/userData smoke: PASS
+          - graphical Electron-window smoke: NOT CLAIMED (hosted runner is non-interactive)
+
+          ## Isolation
+          - appId: `com.artisys.pdvnexus.classicoazul`
+          - productName: `PDV Nexus Clássico Azul`
+          - userData basename: `PDV Nexus Classico Azul`
+          - original updater metadata: disabled
+          - no release or Google Drive publication executed
+          - source repository was detached at the frozen SHA with push disabled
+
+          Note: source workflow files are applied to the destination branch separately by the GitHub connector because the Actions token cannot write workflow files.
+          "@ | Set-Content -Encoding UTF8 docs/baseline-fases-0-3.md
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/baseline-fases-0-3.md
+          git commit -m "test: record classic blue baseline gates"
+          git push origin "HEAD:$env:TARGET_BRANCH"
+
+  final-review:
+    needs: baseline-windows
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TARGET_BRANCH }}
+          fetch-depth: 0
+      - name: Clone frozen source and supply contract workflow
+        shell: pwsh
+        run: |
+          git clone --filter=blob:none "https://github.com/$env:SOURCE_REPO.git" "$env:RUNNER_TEMP\source-review"
+          git -C "$env:RUNNER_TEMP\source-review" checkout --detach $env:SOURCE_SHA
+          Copy-Item "$env:RUNNER_TEMP\source-review\.github\workflows\publish-pdv-release.yml" .github\workflows\publish-pdv-release.yml -Force
+      - name: Verify UI unchanged from frozen source
+        shell: pwsh
+        run: |
+          $a=(git hash-object windows-10/apps/pdv-demo/src/PdvDemoApp.tsx)
+          $b=(git -C "$env:RUNNER_TEMP\source-review" hash-object windows-10/apps/pdv-demo/src/PdvDemoApp.tsx)
+          if ($a -ne $b) { throw 'Windows 10 UI changed' }
+          $a=(git hash-object windows-7/apps/pdv-demo/src/PdvDemoApp.tsx)
+          $b=(git -C "$env:RUNNER_TEMP\source-review" hash-object windows-7/apps/pdv-demo/src/PdvDemoApp.tsx)
+          if ($a -ne $b) { throw 'Windows 7 UI changed' }
+          Write-Host 'UI hash comparison: PASS'
+      - name: Final aggregate gate
+        shell: cmd
+        working-directory: windows-10
+        run: npm run typecheck && npm run test:pdv-payments && npm run test:pdv-upgrade && node --test tests/pdv-classic-product-isolation.test.mjs && npm run build:pdv-demo
+      - name: Final dangerous-reference scan
+        shell: pwsh
+        run: |
+          $files=@('pdv-release.json','windows-10/apps/nexus-desktop/bootstrap.cjs','windows-10/apps/nexus-desktop/main.cjs','windows-10/apps/nexus-desktop/electron-builder.cjs','windows-10/apps/nexus-desktop/electron-builder-pdv.cjs','windows-7/apps/nexus-desktop/bootstrap.cjs','windows-7/apps/nexus-desktop/main.cjs','windows-7/apps/nexus-desktop/electron-builder.cjs','windows-7/apps/nexus-desktop/electron-builder-pdv.cjs')
+          $matches=Select-String -Path $files -Pattern 'com.nexuscore.pdv|PDV-Nexus-Setup|PDVNexus/releases/latest/download|1M0_SfF1h_zUqEM-Ns1HJ8ZtCMMcbHnFr'
+          if($matches){$matches|Format-Table;throw 'dangerous reference remains'}
+          Write-Host 'Final isolation reference scan: PASS'
