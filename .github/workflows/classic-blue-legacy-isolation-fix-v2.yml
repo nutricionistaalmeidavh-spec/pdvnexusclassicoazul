@@ -1,0 +1,153 @@
+name: Classic Blue Legacy Isolation Fix v2
+
+on:
+  push:
+    branches:
+      - work/fases-0-3-classico-azul
+    paths:
+      - .github/workflows/classic-blue-legacy-isolation-fix-v2.yml
+
+permissions:
+  contents: write
+
+jobs:
+  red-green-and-build:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/fases-0-3-classico-azul
+          fetch-depth: 0
+
+      - name: Install Windows 7 line dependencies
+        working-directory: windows-7
+        run: npm ci
+
+      - name: Write failing legacy builder isolation test
+        shell: pwsh
+        run: |
+          @'
+          import assert from "node:assert/strict";
+          import path from "node:path";
+          import { createRequire } from "node:module";
+          import { fileURLToPath } from "node:url";
+          import test from "node:test";
+
+          const require = createRequire(import.meta.url);
+          const desktopDir = fileURLToPath(new URL("../apps/nexus-desktop/", import.meta.url));
+          function load(name) {
+            const target = path.join(desktopDir, name);
+            delete require.cache[require.resolve(target)];
+            return require(target);
+          }
+
+          test("Windows 7 builder remains classic-blue and updater-free", () => {
+            const config = load("electron-builder-pdv-win7.cjs");
+            assert.equal(config.appId, "com.artisys.pdvnexus.classicoazul");
+            assert.equal(config.productName, "PDV Nexus Clássico Azul");
+            assert.equal(config.extraMetadata?.pdvUpdateChannel, undefined);
+            assert.equal(config.extraMetadata?.pdvUpdateManifestUrl, undefined);
+            assert.equal(config.artifactName, "PDV-Nexus-Classico-Azul-Windows-7-Setup-${version}.${ext}");
+          });
+
+          test("Windows 8 x86 builder remains classic-blue and updater-free", () => {
+            const config = load("electron-builder-pdv-win8-x86.cjs");
+            assert.equal(config.appId, "com.artisys.pdvnexus.classicoazul");
+            assert.equal(config.productName, "PDV Nexus Clássico Azul");
+            assert.equal(config.extraMetadata?.pdvUpdateChannel, undefined);
+            assert.equal(config.extraMetadata?.pdvUpdateManifestUrl, undefined);
+            assert.equal(config.artifactName, "PDV-Nexus-Classico-Azul-Windows-8-32bit-Setup-${version}.${ext}");
+          });
+          '@ | Set-Content -Encoding UTF8 windows-7/tests/pdv-classic-legacy-builder-isolation.test.mjs
+
+      - name: Verify RED and normalize expected exit
+        shell: pwsh
+        run: |
+          Push-Location windows-7
+          node --test tests/pdv-classic-legacy-builder-isolation.test.mjs *> "$env:RUNNER_TEMP\legacy-red.log"
+          $code=$LASTEXITCODE
+          Pop-Location
+          Get-Content "$env:RUNNER_TEMP\legacy-red.log" | Select-Object -Last 40
+          if ($code -eq 0) { throw 'Expected legacy isolation test to fail before implementation' }
+          Write-Host "RED confirmed with exit code $code"
+          $global:LASTEXITCODE=0
+          exit 0
+
+      - name: Remove legacy updater channels and isolate artifact names
+        shell: pwsh
+        run: |
+          @'
+          const base = require("./electron-builder-pdv.cjs");
+
+          module.exports = {
+            ...base,
+            extraMetadata: {
+              ...(base.extraMetadata || {})
+            },
+            artifactName: "PDV-Nexus-Classico-Azul-Windows-7-Setup-${version}.${ext}",
+            directories: { ...base.directories, output: "dist-desktop/pdv-demo-windows-7" },
+            win: {
+              ...base.win,
+              target: [{ target: "nsis", arch: ["x64"] }]
+            }
+          };
+          '@ | Set-Content -Encoding UTF8 windows-7/apps/nexus-desktop/electron-builder-pdv-win7.cjs
+
+          @'
+          const base = require("./electron-builder-pdv.cjs");
+
+          module.exports = {
+            ...base,
+            extraMetadata: {
+              ...(base.extraMetadata || {})
+            },
+            artifactName: "PDV-Nexus-Classico-Azul-Windows-8-32bit-Setup-${version}.${ext}",
+            directories: { ...base.directories, output: "dist-desktop/pdv-demo-windows-8-x86" },
+            win: {
+              ...base.win,
+              target: [{ target: "nsis", arch: ["ia32"] }]
+            }
+          };
+          '@ | Set-Content -Encoding UTF8 windows-7/apps/nexus-desktop/electron-builder-pdv-win8-x86.cjs
+
+      - name: Verify GREEN
+        working-directory: windows-7
+        run: node --test tests/pdv-classic-legacy-builder-isolation.test.mjs tests/pdv-classic-product-isolation.test.mjs
+
+      - name: Typecheck legacy line
+        working-directory: windows-7
+        run: npm run typecheck
+
+      - name: Build Windows 7 renderer
+        working-directory: windows-7
+        run: npm run build:pdv-demo
+
+      - name: Build and verify Windows 7 installer identity
+        shell: pwsh
+        working-directory: windows-7
+        run: |
+          npm run dist:pdv:win7 --workspace @nexus-core/nexus-desktop
+          $exe=Get-ChildItem apps/nexus-desktop/dist-desktop/pdv-demo-windows-7 -Filter 'PDV-Nexus-Classico-Azul-Windows-7-Setup-*.exe' | Select-Object -First 1
+          if(-not $exe){throw 'Classic Blue Windows 7 installer not found'}
+          Write-Host $exe.Name
+
+      - name: Build and verify Windows 8 x86 installer identity
+        shell: pwsh
+        working-directory: windows-7
+        run: |
+          Push-Location apps/nexus-desktop
+          npx electron-builder --config electron-builder-pdv-win8-x86.cjs
+          Pop-Location
+          $exe=Get-ChildItem apps/nexus-desktop/dist-desktop/pdv-demo-windows-8-x86 -Filter 'PDV-Nexus-Classico-Azul-Windows-8-32bit-Setup-*.exe' | Select-Object -First 1
+          if(-not $exe){throw 'Classic Blue Windows 8 x86 installer not found'}
+          Write-Host $exe.Name
+
+      - name: Commit tested non-workflow changes
+        shell: pwsh
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add windows-7/apps/nexus-desktop/electron-builder-pdv-win7.cjs windows-7/apps/nexus-desktop/electron-builder-pdv-win8-x86.cjs windows-7/tests/pdv-classic-legacy-builder-isolation.test.mjs
+          git commit -m "fix: isolate classic blue legacy installer channels"
+          git push origin HEAD:work/fases-0-3-classico-azul
