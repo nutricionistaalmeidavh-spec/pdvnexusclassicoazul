@@ -33,7 +33,7 @@ jobs:
         working-directory: windows-10
         shell: pwsh
         run: |
-          npm install --save-dev electron@40.10.3
+          npm install --save-dev electron@44.4.5
           npm audit fix
 
       - name: Verify no high vulnerabilities remain
