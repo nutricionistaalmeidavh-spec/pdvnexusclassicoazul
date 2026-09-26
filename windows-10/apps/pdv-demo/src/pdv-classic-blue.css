@@ -545,3 +545,24 @@ body {
 }
 
 .classic-blue-items-table { min-width: 0; }
+
+.classic-blue-quantity-cell {
+  justify-content: center !important;
+  gap: 3px;
+  padding: 0 2px !important;
+}
+.classic-blue-quantity-cell > span { min-width: 26px; justify-content: center; text-align: center; }
+.classic-blue-quantity-button {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid #777;
+  border-top-color: #fff;
+  border-left-color: #fff;
+  border-radius: 0;
+  background: #ece9d8;
+  color: #003f9b;
+  font: 700 13px/18px Tahoma, sans-serif;
+  cursor: default;
+}
+.classic-blue-quantity-button:active { border-color: #fff #666 #666 #fff; }

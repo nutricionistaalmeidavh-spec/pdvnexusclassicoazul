@@ -82,3 +82,24 @@ body { background: #c8c8c8; color: var(--classic-text); font-family: Tahoma, "Se
 @media (max-width: 760px) { .classic-blue-workspace { grid-template-columns: 1fr; } .classic-blue-summary { grid-template-columns: repeat(3, 1fr); grid-template-rows: auto; } .classic-blue-product-preview { grid-column: 1 / -1; } .classic-blue-event { grid-column: 1 / -1; } .classic-blue-payment-panel { grid-template-columns: 1fr; } .classic-blue-function-bar { grid-template-columns: repeat(2, 1fr); } .classic-blue-statusbar { grid-template-columns: 1fr 1fr; height: 44px; } .pdv-density-root[data-cashier-layout="classic-blue"] { padding-bottom: 44px; } }
 
 .classic-blue-items-table { min-width: 0; }
+
+.classic-blue-quantity-cell {
+  justify-content: center !important;
+  gap: 3px;
+  padding: 0 2px !important;
+}
+.classic-blue-quantity-cell > span { min-width: 26px; justify-content: center; text-align: center; }
+.classic-blue-quantity-button {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid #777;
+  border-top-color: #fff;
+  border-left-color: #fff;
+  border-radius: 0;
+  background: #ece9d8;
+  color: #003f9b;
+  font: 700 13px/18px Tahoma, sans-serif;
+  cursor: default;
+}
+.classic-blue-quantity-button:active { border-color: #fff #666 #666 #fff; }

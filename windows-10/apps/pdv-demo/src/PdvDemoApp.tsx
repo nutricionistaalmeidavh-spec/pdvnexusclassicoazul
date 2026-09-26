@@ -500,7 +500,11 @@ export function PdvDemoApp() {
               {(sale?.items ?? []).map((item) => <div className="classic-blue-item-row" key={item.id}>
                 <span>{item.productCode}</span>
                 <span title={item.productName}>{item.productName}</span>
-                <span className="num">{item.quantity.toFixed(item.unitLabel === "KG" ? 3 : 0)} {item.unitLabel}</span>
+                <span className="num classic-blue-quantity-cell">
+                  {item.source === "catalog" && item.unitLabel === "UN" ? <button type="button" className="classic-blue-quantity-button" aria-label="Diminuir quantidade" title="Diminuir quantidade" onClick={() => adjustSaleItemQuantity(item.id, -1)}>−</button> : null}
+                  <span>{item.quantity.toFixed(item.unitLabel === "KG" ? 3 : 0)} {item.unitLabel}</span>
+                  {item.source === "catalog" && item.unitLabel === "UN" ? <button type="button" className="classic-blue-quantity-button" aria-label="Aumentar quantidade" title="Aumentar quantidade" onClick={() => adjustSaleItemQuantity(item.id, 1)}>+</button> : null}
+                </span>
                 <span className="num">{formatCurrency(item.unitPrice)}</span>
                 <span className="num">{formatCurrency(item.totalPrice)}</span>
               </div>)}
