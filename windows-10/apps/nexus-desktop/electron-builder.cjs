@@ -45,6 +45,7 @@ module.exports = {
     "bootstrap.cjs",
     "main.cjs",
     "pdv-lifecycle.cjs",
+    "pdv-product-identity.cjs",
     "preload.cjs",
     "package.json",
     {
