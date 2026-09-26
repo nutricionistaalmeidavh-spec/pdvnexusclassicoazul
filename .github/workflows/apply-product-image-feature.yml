@@ -1,0 +1,35 @@
+name: Apply Product Image Feature
+
+on:
+  push:
+    branches:
+      - feat/product-image-registration
+    paths:
+      - .github/workflows/apply-product-image-feature.yml
+      - windows-10/tools/apply-product-image-feature.mjs
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/product-image-registration
+          fetch-depth: 0
+      - name: Apply product image registration implementation
+        run: node windows-10/tools/apply-product-image-feature.mjs
+      - name: Commit implementation
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add windows-10
+          git commit -m "feat: add local product image registration"
+          git push origin HEAD:feat/product-image-registration
