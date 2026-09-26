@@ -1,0 +1,43 @@
+name: Restore Classic Blue Quantity Controls
+
+on:
+  push:
+    branches:
+      - work/fases-4-7-classico-azul
+    paths:
+      - .github/workflows/fix-classic-blue-quantity-controls.yml
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/fases-4-7-classico-azul
+          fetch-depth: 0
+      - name: Apply quantity-control repair
+        run: python scripts/fix-classic-blue-quantity-controls.py
+      - name: Install Windows 10 dependencies
+        working-directory: windows-10
+        run: npm ci
+      - name: Verify Windows 10 release and UI contracts
+        working-directory: windows-10
+        run: npm run test:pdv-upgrade && node --test tests/pdv-classic-blue-ui.test.mjs && npm run typecheck && npm run build:pdv-demo
+      - name: Install legacy dependencies
+        working-directory: windows-7
+        run: npm ci
+      - name: Verify legacy release and UI contracts
+        working-directory: windows-7
+        run: npm run test:pdv-upgrade && node --test tests/pdv-classic-blue-ui.test.mjs && npm run typecheck && npm run build:pdv-demo
+      - name: Commit repair
+        shell: pwsh
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add windows-10/apps/pdv-demo/src/PdvDemoApp.tsx windows-10/apps/pdv-demo/src/pdv-classic-blue.css windows-7/apps/pdv-demo/src/PdvDemoApp.tsx windows-7/apps/pdv-demo/src/pdv-classic-blue.css
+          git commit -m "fix: preserve quantity controls in classic blue cashier"
+          git push origin HEAD:work/fases-4-7-classico-azul
