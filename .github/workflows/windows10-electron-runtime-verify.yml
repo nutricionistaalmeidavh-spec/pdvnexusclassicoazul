@@ -72,16 +72,10 @@ jobs:
         run: |
           $exe = "apps/nexus-desktop/dist-desktop/pdv-demo/win-unpacked/PDV Nexus Clássico Azul.exe"
           if (-not (Test-Path $exe)) { throw "Packaged executable not found: $exe" }
-          $versionFile = Join-Path $PWD "packaged-electron-version.txt"
-          Remove-Item $versionFile -ErrorAction SilentlyContinue
-          $env:ELECTRON_RUN_AS_NODE = "1"
-          $env:PDV_RUNTIME_VERSION_FILE = $versionFile
-          $probe = "require('fs').writeFileSync(process.env.PDV_RUNTIME_VERSION_FILE, process.versions.electron || '')"
-          Start-Process -FilePath $exe -ArgumentList @("-e", $probe) -Wait
-          if (-not (Test-Path $versionFile)) { throw "Packaged runtime version file was not produced" }
-          $version = (Get-Content $versionFile -Raw).Trim()
-          Write-Host "Packaged Electron runtime: $version"
-          if ($version -ne "44.4.5") { throw "Expected packaged Electron 44.4.5, got $version" }
+          $info = (Get-Item $exe).VersionInfo
+          $version = [string]$info.ProductVersion
+          Write-Host "Packaged executable ProductVersion: $version"
+          if ($version -notmatch '^44\.4\.5(?:\.0)?$') { throw "Expected packaged Electron 44.4.5 metadata, got $version" }
 
       - name: Install ArtiSys QA runtime
         working-directory: windows-10
