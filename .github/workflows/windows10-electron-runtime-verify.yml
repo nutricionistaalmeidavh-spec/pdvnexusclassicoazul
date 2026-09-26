@@ -72,8 +72,13 @@ jobs:
         run: |
           $exe = "apps/nexus-desktop/dist-desktop/pdv-demo/win-unpacked/PDV Nexus Clássico Azul.exe"
           if (-not (Test-Path $exe)) { throw "Packaged executable not found: $exe" }
+          $versionFile = Join-Path $PWD "packaged-electron-version.txt"
           $env:ELECTRON_RUN_AS_NODE = "1"
-          $version = & $exe -e "process.stdout.write(process.versions.electron || '')"
+          $env:PDV_RUNTIME_VERSION_FILE = $versionFile
+          & $exe -e "require('fs').writeFileSync(process.env.PDV_RUNTIME_VERSION_FILE, process.versions.electron || '')"
+          if ($LASTEXITCODE -ne 0) { throw "Packaged executable version probe failed with exit code $LASTEXITCODE" }
+          if (-not (Test-Path $versionFile)) { throw "Packaged runtime version file was not produced" }
+          $version = (Get-Content $versionFile -Raw).Trim()
           Write-Host "Packaged Electron runtime: $version"
           if ($version -ne "44.4.5") { throw "Expected packaged Electron 44.4.5, got $version" }
 
