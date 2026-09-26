@@ -1,0 +1,4 @@
+source_repository=nutricionistaalmeidavh-spec/PDVNexus
+source_branch=main
+source_commit=07d7bba2f184e298cb53fa1d3d1a24b37539e844
+destination_repository=nutricionistaalmeidavh-spec/pdvnexusclassicoazul
