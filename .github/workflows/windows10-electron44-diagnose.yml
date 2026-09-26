@@ -1,0 +1,49 @@
+name: Windows 10 Electron 44 Diagnose
+
+on:
+  push:
+    branches:
+      - fix/windows10-electron-runtime-44
+    paths:
+      - .github/workflows/windows10-electron44-diagnose.yml
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose-main-process:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/windows10-electron-runtime-44
+      - name: Install Windows 10 dependencies
+        working-directory: windows-10
+        run: npm ci
+      - name: Build renderer
+        working-directory: windows-10
+        run: npm run build:pdv-demo
+      - name: Launch Electron 44 and capture startup diagnostics
+        working-directory: windows-10
+        shell: pwsh
+        run: |
+          $env:NEXUS_APP = "pdv-demo"
+          $env:ELECTRON_ENABLE_LOGGING = "1"
+          $env:ELECTRON_ENABLE_STACK_DUMPING = "1"
+          $exe = (Resolve-Path "node_modules/electron/dist/electron.exe").Path
+          $stdout = Join-Path $PWD "electron44-stdout.log"
+          $stderr = Join-Path $PWD "electron44-stderr.log"
+          $process = Start-Process -FilePath $exe -ArgumentList @("apps/nexus-desktop") -PassThru -RedirectStandardOutput $stdout -RedirectStandardError $stderr
+          Start-Sleep -Seconds 8
+          $process.Refresh()
+          Write-Host "HasExited=$($process.HasExited) MainWindowTitle=$($process.MainWindowTitle) MainWindowHandle=$($process.MainWindowHandle)"
+          Write-Host "=== STDERR ==="
+          if (Test-Path $stderr) { Get-Content $stderr -Raw }
+          Write-Host "=== STDOUT ==="
+          if (Test-Path $stdout) { Get-Content $stdout -Raw }
+          if (-not $process.HasExited) {
+            $null = $process.CloseMainWindow()
+            if (-not $process.WaitForExit(3000)) { $process.Kill() }
+          }
+          if ($process.MainWindowTitle -eq "Error") { throw "Electron 44 opened main-process Error dialog; diagnostics printed above" }
