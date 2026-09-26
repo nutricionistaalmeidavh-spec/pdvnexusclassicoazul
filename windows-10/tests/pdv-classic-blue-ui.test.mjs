@@ -23,6 +23,12 @@ test("classic blue chrome exposes the operational Windows-style menus", () => {
   assert.match(chrome, /Caixa 001/);
 });
 
+test("customer presentation keeps the Classic Blue window title", () => {
+  const decor = read("apps/pdv-demo/src/CustomerPresentationDecor.tsx");
+  assert.match(decor, /document\.title\s*=\s*"PDV Nexus Clássico Azul"/);
+  assert.doesNotMatch(decor, /document\.title\s*=\s*"PDV Nexus"/);
+});
+
 test("cashier uses classic table, totals and function-key surface", () => {
   const app = read("apps/pdv-demo/src/PdvDemoApp.tsx");
   assert.match(app, /data-classic-blue="cashier"/);
