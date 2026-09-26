@@ -1,0 +1,15 @@
+{
+  "id": "pdv-classic-blue-ui-review",
+  "steps": [
+    { "action": "waitFor", "selector": "[data-cashier-layout=\"classic-blue\"]", "name": "classic-shell", "timeoutMs": 20000 },
+    { "action": "waitFor", "selector": "[data-classic-blue=\"cashier\"]", "name": "classic-cashier", "timeoutMs": 20000 },
+    { "action": "expectVisible", "text": "VENDA (PDV)", "exact": true, "name": "operation-title" },
+    { "action": "waitFor", "selector": ".classic-blue-table-head", "name": "items-table", "timeoutMs": 5000 },
+    { "action": "expectVisible", "text": "Descrição do Produto", "exact": true, "name": "description-column" },
+    { "action": "expectVisible", "text": "TOTAL", "exact": true, "name": "total-panel" },
+    { "action": "expectVisible", "text": "RECEBIDO", "exact": true, "name": "received-panel" },
+    { "action": "expectVisible", "text": "TROCO", "exact": true, "name": "change-panel" },
+    { "action": "expectVisible", "text": "F12", "exact": true, "name": "finalize-key" },
+    { "action": "screenshot", "name": "01-classic-blue-cashier" }
+  ]
+}
