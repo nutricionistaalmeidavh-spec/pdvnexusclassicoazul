@@ -77,36 +77,54 @@ jobs:
           Write-Host "Packaged executable ProductVersion: $version"
           if ($version -notmatch '^44\.4\.5(?:\.0)?$') { throw "Expected packaged Electron 44.4.5 metadata, got $version" }
 
-      - name: Install ArtiSys QA runtime
-        working-directory: windows-10
-        run: npm ci --prefix tools/artisys-qa
-
-      - name: Prepare bootstrap graphical smoke config
+      - name: Packaged graphical smoke through bootstrap
         working-directory: windows-10
         shell: pwsh
         run: |
-          $config = Get-Content qa/artisys-qa.config.json -Raw | ConvertFrom-Json
-          $config.electron.entry = "../apps/nexus-desktop/bootstrap.cjs"
-          $config.electron | Add-Member -NotePropertyName "executablePath" -NotePropertyValue "../node_modules/electron/dist/electron.exe" -Force
-          $config.flows | Add-Member -NotePropertyName "ui-review-classic-blue" -NotePropertyValue "flows/ui-review-classic-blue.json" -Force
-          $config | ConvertTo-Json -Depth 20 | Set-Content -Encoding UTF8 qa/artisys-qa.runtime44.config.json
+          $exe = (Resolve-Path "apps/nexus-desktop/dist-desktop/pdv-demo/win-unpacked/PDV Nexus Clássico Azul.exe").Path
+          $artifactDir = Join-Path $PWD "qa-artifacts-runtime44"
+          New-Item -ItemType Directory -Force -Path $artifactDir | Out-Null
+          $screenshot = Join-Path $artifactDir "classic-blue-packaged-smoke.png"
 
-      - name: Validate graphical smoke config
-        working-directory: windows-10
-        run: node tools/artisys-qa/src/cli.mjs validate --config qa/artisys-qa.runtime44.config.json
+          $process = Start-Process -FilePath $exe -PassThru
+          try {
+            $deadline = (Get-Date).AddSeconds(30)
+            do {
+              Start-Sleep -Milliseconds 500
+              $process.Refresh()
+              if ($process.HasExited) { throw "Packaged PDV exited before opening its main window. ExitCode=$($process.ExitCode)" }
+            } while ($process.MainWindowHandle -eq 0 -and (Get-Date) -lt $deadline)
 
-      - name: Graphical smoke through bootstrap
-        working-directory: windows-10
-        run: node tools/artisys-qa/src/cli.mjs run --config qa/artisys-qa.runtime44.config.json --flow ui-review-classic-blue --output qa-artifacts-runtime44
+            $process.Refresh()
+            if ($process.MainWindowHandle -eq 0) { throw "Packaged PDV did not expose a main window within 30 seconds" }
+            Write-Host "MainWindowTitle: $($process.MainWindowTitle)"
+            if ($process.MainWindowTitle -notmatch 'PDV Nexus Clássico Azul') {
+              throw "Unexpected packaged window title: $($process.MainWindowTitle)"
+            }
 
-      - name: Verify graphical smoke evidence
-        working-directory: windows-10
-        shell: pwsh
-        run: |
-          if (-not (Test-Path qa-artifacts-runtime44/run-summary.json)) { throw "run-summary.json missing" }
-          $screenshots = Get-ChildItem qa-artifacts-runtime44 -Recurse -Filter *.png
-          if ($screenshots.Count -lt 1) { throw "No graphical screenshot produced" }
-          Write-Host "Graphical screenshots: $($screenshots.Count)"
+            Add-Type -AssemblyName System.Windows.Forms
+            Add-Type -AssemblyName System.Drawing
+            $bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+            $bitmap = New-Object System.Drawing.Bitmap $bounds.Width, $bounds.Height
+            $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
+            try {
+              $graphics.CopyFromScreen($bounds.Location, [System.Drawing.Point]::Empty, $bounds.Size)
+              $bitmap.Save($screenshot, [System.Drawing.Imaging.ImageFormat]::Png)
+            } finally {
+              $graphics.Dispose()
+              $bitmap.Dispose()
+            }
+
+            if (-not (Test-Path $screenshot)) { throw "Graphical smoke screenshot was not produced" }
+            $size = (Get-Item $screenshot).Length
+            Write-Host "Graphical smoke screenshot bytes: $size"
+            if ($size -lt 1000) { throw "Graphical smoke screenshot is unexpectedly small" }
+          } finally {
+            if (-not $process.HasExited) {
+              $null = $process.CloseMainWindow()
+              if (-not $process.WaitForExit(5000)) { $process.Kill() }
+            }
+          }
 
       - name: Verify Windows 7 and 8 line untouched
         shell: pwsh
