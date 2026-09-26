@@ -58,6 +58,28 @@ test("classic presentation preserves existing business hooks", () => {
   assert.match(app, /event\.key === "F12"/);
 });
 
+test("product registration supports one validated local product image", () => {
+  const app = read("apps/pdv-demo/src/PdvDemoApp.tsx");
+  const runtime = read("packages/desktop-runtime/src/index.ts");
+  const preload = read("apps/nexus-desktop/preload.cjs");
+  const desktop = read("apps/nexus-desktop/main.cjs");
+  const builder = read("apps/nexus-desktop/electron-builder.cjs");
+
+  assert.match(app, /imageRef/);
+  assert.match(app, /Selecionar foto/);
+  assert.match(app, /Remover foto/);
+  assert.match(app, /getDesktopPdvProductImageBridge/);
+  assert.match(runtime, /DesktopPdvProductImageBridge/);
+  assert.match(preload, /pdvProductImage/);
+  assert.match(desktop, /nexus-pdv-product-image:select/);
+  assert.match(desktop, /image\/jpeg/);
+  assert.match(desktop, /image\/png/);
+  assert.match(desktop, /image\/webp/);
+  assert.match(desktop, /5 \* 1024 \* 1024/);
+  assert.match(builder, /artisys-upload\.mjs/);
+  assert.match(builder, /artisys-files\.mjs/);
+});
+
 test("classic stylesheet declares the blue operational shell", () => {
   const css = read("apps/pdv-demo/src/pdv-classic-blue.css");
   assert.match(css, /--classic-blue-700/);
