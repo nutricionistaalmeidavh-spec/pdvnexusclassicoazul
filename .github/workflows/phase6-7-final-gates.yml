@@ -1,0 +1,147 @@
+name: Classic Blue Phase 6-7 Final Gates
+
+on:
+  push:
+    branches:
+      - work/fases-4-7-classico-azul
+    paths:
+      - .github/workflows/phase6-7-final-gates.yml
+
+permissions:
+  contents: read
+
+jobs:
+  windows10-regression-and-qa:
+    runs-on: windows-latest
+    timeout-minutes: 65
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/fases-4-7-classico-azul
+          fetch-depth: 0
+      - name: Verify business-domain files are unchanged from Phase 3 main
+        shell: pwsh
+        run: |
+          git fetch origin main
+          git diff --exit-code origin/main -- windows-10/packages/database windows-10/packages/desktop-runtime/src windows-10/packages/modules/balanca/src windows-7/packages/database windows-7/packages/desktop-runtime/src windows-7/packages/modules/balanca/src
+      - name: Install Windows 10 dependencies
+        working-directory: windows-10
+        run: npm ci
+      - name: Typecheck
+        working-directory: windows-10
+        run: npm run typecheck
+      - name: Payment and stock regression
+        working-directory: windows-10
+        run: npm run test:pdv-payments
+      - name: Upgrade and release isolation regression
+        working-directory: windows-10
+        run: npm run test:pdv-upgrade
+      - name: Product identity and Classic Blue contracts
+        working-directory: windows-10
+        run: node --test tests/pdv-classic-product-isolation.test.mjs tests/pdv-classic-blue-ui.test.mjs
+      - name: Build renderer
+        working-directory: windows-10
+        run: npm run build:pdv-demo
+      - name: Build Windows 10 installer
+        working-directory: windows-10
+        run: npm run desktop:dist:pdv
+      - name: Verify Windows 10 installer identity
+        shell: pwsh
+        run: |
+          $exe=Get-ChildItem windows-10/apps/nexus-desktop/dist-desktop/pdv-demo -Filter 'PDV-Nexus-Classico-Azul-Setup-*.exe' | Select-Object -First 1
+          if(-not $exe){ throw 'Classic Blue Windows 10 installer not found' }
+          Write-Host "Installer: $($exe.Name)"
+          Get-FileHash -Algorithm SHA256 $exe.FullName
+      - name: Install ArtiSys QA dependencies
+        working-directory: windows-10
+        run: npm ci --prefix tools/artisys-qa
+      - name: Prepare Classic Blue bootstrap QA config
+        shell: pwsh
+        working-directory: windows-10
+        run: |
+          $config=Get-Content qa/artisys-qa.config.json -Raw | ConvertFrom-Json
+          $config.electron.entry='../apps/nexus-desktop/bootstrap.cjs'
+          $config.capture.screenshotEachStep=$true
+          $config.defaultFlow='ui-review-classic-blue'
+          $config.flows | Add-Member -NotePropertyName 'ui-review-classic-blue' -NotePropertyValue 'flows/ui-review-classic-blue.json' -Force
+          $config | ConvertTo-Json -Depth 20 | Set-Content -Encoding UTF8 qa/artisys-qa.classic-blue.config.json
+      - name: Validate graphical QA manifest
+        working-directory: windows-10
+        run: node tools/artisys-qa/src/cli.mjs validate --config qa/artisys-qa.classic-blue.config.json
+      - name: Run graphical Classic Blue QA through real bootstrap
+        working-directory: windows-10
+        run: node tools/artisys-qa/src/cli.mjs run --config qa/artisys-qa.classic-blue.config.json --flow ui-review-classic-blue --output qa-classic-blue-artifacts
+      - name: Verify graphical evidence
+        shell: pwsh
+        working-directory: windows-10
+        run: |
+          $png=Get-ChildItem qa-classic-blue-artifacts -Recurse -Filter '*.png' | Select-Object -First 1
+          if(-not $png){ throw 'Classic Blue QA produced no screenshot' }
+          $summary=Get-ChildItem qa-classic-blue-artifacts -Recurse -Filter '*summary*.json' | Select-Object -First 1
+          if(-not $summary){ throw 'Classic Blue QA produced no summary' }
+          Write-Host "Screenshot: $($png.FullName)"
+          Write-Host "Summary: $($summary.FullName)"
+      - name: Verify release remains hard-disabled
+        shell: pwsh
+        run: |
+          $workflow=Get-Content .github/workflows/publish-pdv-release.yml -Raw
+          if($workflow -notmatch 'if: \$\{\{ false \}\}') { throw 'Release workflow is not hard-disabled' }
+          $release=Get-Content pdv-release.json -Raw | ConvertFrom-Json
+          if($null -ne $release.manifestUrl){ throw 'manifestUrl must remain null' }
+          if(($release.distribution.PSObject.Properties | Measure-Object).Count -ne 0){ throw 'distribution must remain empty' }
+      - name: Upload graphical QA evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Classic-Blue-Phase6-QA
+          path: windows-10/qa-classic-blue-artifacts
+          if-no-files-found: warn
+          retention-days: 7
+
+  legacy-phase7:
+    runs-on: windows-latest
+    timeout-minutes: 65
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/fases-4-7-classico-azul
+          fetch-depth: 0
+      - name: Install legacy dependencies
+        working-directory: windows-7
+        run: npm ci
+      - name: Typecheck legacy line
+        working-directory: windows-7
+        run: npm run typecheck
+      - name: Payment and stock regression legacy
+        working-directory: windows-7
+        run: npm run test:pdv-payments
+      - name: Upgrade regression legacy
+        working-directory: windows-7
+        run: npm run test:pdv-upgrade
+      - name: Identity, legacy builder and Classic Blue contracts
+        working-directory: windows-7
+        run: node --test tests/pdv-classic-product-isolation.test.mjs tests/pdv-classic-legacy-builder-isolation.test.mjs tests/pdv-classic-blue-ui.test.mjs
+      - name: Build legacy renderer
+        working-directory: windows-7
+        run: npm run build:pdv-demo
+      - name: Build Windows 7 x64 installer
+        working-directory: windows-7
+        run: npm run desktop:dist:pdv:win7
+      - name: Build Windows 8 x86 installer
+        shell: pwsh
+        working-directory: windows-7
+        run: |
+          Push-Location apps/nexus-desktop
+          npx electron-builder --config electron-builder-pdv-win8-x86.cjs
+          Pop-Location
+      - name: Verify legacy installer identities
+        shell: pwsh
+        run: |
+          $w7=Get-ChildItem windows-7/apps/nexus-desktop/dist-desktop/pdv-demo-windows-7 -Filter 'PDV-Nexus-Classico-Azul-Windows-7-Setup-*.exe' | Select-Object -First 1
+          $w8=Get-ChildItem windows-7/apps/nexus-desktop/dist-desktop/pdv-demo-windows-8-x86 -Filter 'PDV-Nexus-Classico-Azul-Windows-8-32bit-Setup-*.exe' | Select-Object -First 1
+          if(-not $w7){ throw 'Classic Blue Windows 7 installer not found' }
+          if(-not $w8){ throw 'Classic Blue Windows 8 x86 installer not found' }
+          Write-Host "W7: $($w7.Name)"
+          Write-Host "W8: $($w8.Name)"
+          Get-FileHash -Algorithm SHA256 $w7.FullName
+          Get-FileHash -Algorithm SHA256 $w8.FullName
