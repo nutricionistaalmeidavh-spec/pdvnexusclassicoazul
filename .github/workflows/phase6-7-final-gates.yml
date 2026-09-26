@@ -1,4 +1,4 @@
-name: Classic Blue Phase 6-7 Final Gates
+name: Classic Blue Phase 6-7 Final Gates v2
 
 on:
   push:
@@ -93,7 +93,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: Classic-Blue-Phase6-QA
+          name: Classic-Blue-Phase6-QA-v2
           path: windows-10/qa-classic-blue-artifacts
           if-no-files-found: warn
           retention-days: 7
