@@ -1,3 +1,5 @@
+// Vendored from nutricionistaalmeidavh-spec/utilidades@9bca8b29f3a5875433b42d01ceb84e743dabba82/modules/artisys-upload/src/index.mjs
+// Core local/self-hosted: no paid service or runtime network dependency.
 // Vendored from nutricionistaalmeidavh-spec/utilidades/modules/artisys-upload/src/index.mjs
 // Core local/self-hosted: no paid service or runtime network dependency.
 function positiveInteger(value, name) {

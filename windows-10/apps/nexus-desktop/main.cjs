@@ -1,8 +1,9 @@
-const { app, BrowserWindow, ipcMain, safeStorage, session } = require("electron");
+const { app, BrowserWindow, dialog, ipcMain, safeStorage, session } = require("electron");
 const fs = require("node:fs");
 const http = require("node:http");
 const os = require("node:os");
 const path = require("node:path");
+const { pathToFileURL } = require("node:url");
 const { SerialPort } = require("serialport");
 let DatabaseSync = null;
 
@@ -23,7 +24,11 @@ const APP_DB_FILE = "software-local.sqlite";
 const PDV_SYNC_DEFAULT_PORT = 4174;
 const TEF_BRIDGE_DEFAULT_PORT = 9090;
 const PDV_BACKUP_DIR = "pdv-backups";
+const PDV_PRODUCT_IMAGE_DIR = "pdv-product-images";
+const PDV_PRODUCT_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
+const PDV_PRODUCT_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const APP_BACKUP_DIR = "app-backups";
+let pdvProductImageModulesPromise = null;
 const openSerialPorts = new Map();
 let mainWindowRef = null;
 let pdvDbRef = null;
@@ -88,6 +93,79 @@ function getAppDbPath() {
 
 function getPdvBackupDir() {
   return path.join(app.getPath("userData"), PDV_BACKUP_DIR);
+}
+
+function getPdvProductImageDir() {
+  return path.join(app.getPath("userData"), PDV_PRODUCT_IMAGE_DIR);
+}
+
+function loadPdvProductImageModules() {
+  if (!pdvProductImageModulesPromise) {
+    pdvProductImageModulesPromise = Promise.all([
+      import(pathToFileURL(path.join(__dirname, "artisys-upload.mjs")).href),
+      import(pathToFileURL(path.join(__dirname, "artisys-files.mjs")).href)
+    ]).then(([upload, files]) => ({ upload, files }));
+  }
+  return pdvProductImageModulesPromise;
+}
+
+function resolveProductImageMime(filePath) {
+  const extension = path.extname(filePath).toLowerCase();
+  if (extension === ".jpg" || extension === ".jpeg") return "image/jpeg";
+  if (extension === ".png") return "image/png";
+  if (extension === ".webp") return "image/webp";
+  return "application/octet-stream";
+}
+
+function safeProductImageFolder(productCode) {
+  return String(productCode || "novo-produto").replace(/[^a-z0-9_-]/gi, "-").replace(/^-+|-+$/g, "") || "novo-produto";
+}
+
+async function selectPdvProductImage(productCode) {
+  const result = mainWindowRef
+    ? await dialog.showOpenDialog(mainWindowRef, { properties: ["openFile"], filters: [{ name: "Imagens", extensions: ["jpg", "jpeg", "png", "webp"] }] })
+    : await dialog.showOpenDialog({ properties: ["openFile"], filters: [{ name: "Imagens", extensions: ["jpg", "jpeg", "png", "webp"] }] });
+  if (result.canceled || !result.filePaths[0]) return { canceled: true };
+
+  const selectedPath = result.filePaths[0];
+  const stat = fs.statSync(selectedPath);
+  const type = resolveProductImageMime(selectedPath);
+  const { upload, files } = await loadPdvProductImageModules();
+  const validation = upload.validateUploadBatch([{ name: path.basename(selectedPath), size: stat.size, type, lastModified: stat.mtimeMs }], {
+    maxFiles: 1,
+    maxFileSize: PDV_PRODUCT_IMAGE_MAX_BYTES,
+    accept: PDV_PRODUCT_IMAGE_TYPES
+  });
+  if (validation.rejected.length) {
+    const reasons = validation.rejected[0].reasons.join(", ");
+    throw new Error(`Foto recusada (${reasons}). Use JPG, PNG ou WebP com até 5 MB.`);
+  }
+
+  const workspace = await files.createWorkspace(getPdvProductImageDir());
+  const extension = path.extname(selectedPath).toLowerCase() === ".jpeg" ? ".jpg" : path.extname(selectedPath).toLowerCase();
+  const uniqueName = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}${extension}`;
+  const imageRef = path.posix.join("products", safeProductImageFolder(productCode), uniqueName);
+  await workspace.writeFile(imageRef, fs.readFileSync(selectedPath));
+  const absolute = files.resolveInsideRoot(workspace.root, imageRef);
+  return { canceled: false, imageRef, imageUrl: pathToFileURL(absolute).href, fileName: path.basename(selectedPath) };
+}
+
+async function resolvePdvProductImageUrl(imageRef) {
+  if (!imageRef) return "";
+  const { files } = await loadPdvProductImageModules();
+  const workspace = await files.createWorkspace(getPdvProductImageDir());
+  const absolute = files.resolveInsideRoot(workspace.root, String(imageRef));
+  return fs.existsSync(absolute) ? pathToFileURL(absolute).href : "";
+}
+
+async function removePdvProductImage(imageRef) {
+  if (!imageRef) return true;
+  const { files } = await loadPdvProductImageModules();
+  const workspace = await files.createWorkspace(getPdvProductImageDir());
+  const absolute = files.resolveInsideRoot(workspace.root, String(imageRef));
+  if (!fs.existsSync(absolute)) return true;
+  await workspace.remove(String(imageRef));
+  return true;
 }
 
 function getAppBackupDir(scope) {
@@ -675,6 +753,10 @@ ipcMain.handle("nexus-pdv-store:load", (_event, storeKey) => {
 ipcMain.handle("nexus-pdv-store:save", (_event, storeKey, snapshotJson) => {
   return savePdvStoreSnapshot(storeKey, snapshotJson);
 });
+
+ipcMain.handle("nexus-pdv-product-image:select", (_event, productCode) => selectPdvProductImage(productCode));
+ipcMain.handle("nexus-pdv-product-image:url", (_event, imageRef) => resolvePdvProductImageUrl(imageRef));
+ipcMain.handle("nexus-pdv-product-image:remove", (_event, imageRef) => removePdvProductImage(imageRef));
 
 ipcMain.handle("app-store:status", () => ({
   available: Boolean(DatabaseSync),

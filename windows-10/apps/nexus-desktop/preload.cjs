@@ -46,6 +46,11 @@ contextBridge.exposeInMainWorld("nexusDesktop", {
     list: () => ipcRenderer.invoke("nexus-pdv-backup:list"),
     write: (options) => ipcRenderer.invoke("nexus-pdv-backup:write", options)
   },
+  pdvProductImage: {
+    select: (productCode) => ipcRenderer.invoke("nexus-pdv-product-image:select", productCode),
+    url: (imageRef) => ipcRenderer.invoke("nexus-pdv-product-image:url", imageRef),
+    remove: (imageRef) => ipcRenderer.invoke("nexus-pdv-product-image:remove", imageRef)
+  },
   printing: {
     receipt: (options) => ipcRenderer.invoke("nexus-print:receipt", options)
   }
