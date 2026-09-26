@@ -1,0 +1,18 @@
+name: Publish PDV Release - disabled until Phase 8
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    if: ${{ false }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Protect published version from overwrite
+        if: steps.existing.outputs.exists == 'true' && steps.existing.outputs.draft != 'true'
+        run: |
+          echo "Release publication is intentionally disabled for PDV Nexus Clássico Azul during phases 0-3."
+          exit 1
