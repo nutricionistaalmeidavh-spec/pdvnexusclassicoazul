@@ -191,6 +191,7 @@ export function PdvDemoApp() {
   const [productDraft, setProductDraft] = useState<ProductDraft>(createEmptyProductDraft);
   const [productImagePreviewUrl, setProductImagePreviewUrl] = useState("");
   const [editingProductOriginalImageRef, setEditingProductOriginalImageRef] = useState("");
+  const pendingProductImageDeleteRefs = useRef(new Set<string>());
   const [customerDraft, setCustomerDraft] = useState({ name: "", document: "", city: "", creditLimit: "" });
   const [barcode, setBarcode] = useState("2000015001251");
   const [serialFrame, setSerialFrame] = useState("\u0002300125\u0003");
@@ -288,8 +289,15 @@ export function PdvDemoApp() {
   useEffect(() => {
     if (!desktopStoreBridge || persistenceState !== "ready") return;
     const snapshot = buildPdvSnapshotJson();
-    void desktopStoreBridge.save(PDV_STORE_KEY, snapshot).catch((error) => { setDesktopStoreStatus(error instanceof Error ? error.message : "Falha ao salvar SQLite desktop."); setPersistenceState("error"); });
-  }, [persistenceState, catalogProducts, registeredCustomers, completedSales, cashSession, paymentOptions, scaleBrand, barcodeMode, requestCommand, selectedPort, baudRate, manualProductCode, inventoryMovements, cashClosings, receiptPrinterConfig, lastReceiptText, users, currentOperatorId, auditLogs, cancelledSales, terminalConfig, tefConfig, tefTransactions, autoBackupConfig, autoBackups, storeSettings, promotionGroups]);
+    const referencedImageRefs = new Set(catalogProducts.map((product) => product.imageRef).filter((value): value is string => Boolean(value)));
+    void desktopStoreBridge.save(PDV_STORE_KEY, snapshot).then(async () => {
+      if (!desktopProductImageBridge || pendingProductImageDeleteRefs.current.size === 0) return;
+      for (const imageRef of [...pendingProductImageDeleteRefs.current]) {
+        if (referencedImageRefs.has(imageRef)) continue;
+        try { await desktopProductImageBridge.remove(imageRef); pendingProductImageDeleteRefs.current.delete(imageRef); } catch { /* keep queued for the next successful persistence cycle */ }
+      }
+    }).catch((error) => { setDesktopStoreStatus(error instanceof Error ? error.message : "Falha ao salvar SQLite desktop."); setPersistenceState("error"); });
+  }, [persistenceState, catalogProducts, registeredCustomers, completedSales, cashSession, paymentOptions, scaleBrand, barcodeMode, requestCommand, selectedPort, baudRate, manualProductCode, inventoryMovements, cashClosings, receiptPrinterConfig, lastReceiptText, users, currentOperatorId, auditLogs, cancelledSales, terminalConfig, tefConfig, tefTransactions, autoBackupConfig, autoBackups, storeSettings, promotionGroups, desktopProductImageBridge]);
 
   useEffect(() => {
     if (!serialBridge) return;
@@ -431,13 +439,13 @@ export function PdvDemoApp() {
       const next = editingProductCode ? current.map((item) => item.productCode === editingProductCode ? product : item) : [...current, product];
       return editingProductCode && editingProductCode !== code ? next.map((item) => item.parentProductCode === editingProductCode ? { ...item, parentProductCode: code } : item) : next;
     });
-    if (existingProduct?.imageRef && existingProduct.imageRef !== product.imageRef && desktopProductImageBridge) void desktopProductImageBridge.remove(existingProduct.imageRef).catch(() => false);
+    if (existingProduct?.imageRef && existingProduct.imageRef !== product.imageRef) pendingProductImageDeleteRefs.current.add(existingProduct.imageRef);
     setProductDraft(createEmptyProductDraft()); setProductImagePreviewUrl(""); setEditingProductOriginalImageRef(""); setEditingProductCode(""); setProductFormOpen(false); setLastEvent(editingProductCode ? `${name} atualizado no catalogo.` : `${name} cadastrado no catalogo.`);
   };
 
   const editProduct = (product: CatalogProduct) => { const imageRef = product.imageRef ?? ""; setEditingProductCode(product.productCode); setEditingProductOriginalImageRef(imageRef); setProductImagePreviewUrl(""); setProductFormOpen(true); setProductDraft({ code: product.productCode, barcode: product.barcode, name: product.productName, category: product.category, type: product.itemType, price: String(product.unitPrice), stock: String(product.stock), minimumStock: String(product.minStock), quantityPriceRules: (product.quantityPriceRules ?? []).map((rule) => ({ quantity: String(rule.quantity), bundlePrice: String(rule.bundlePrice) })), productKind: product.productKind ?? "standard", parentProductCode: product.parentProductCode ?? "", variantLabel: product.variantLabel ?? "", promotionGroupId: product.promotionGroupId ?? "", imageRef }); if (imageRef && desktopProductImageBridge) void desktopProductImageBridge.url(imageRef).then(setProductImagePreviewUrl).catch(() => setProductImagePreviewUrl("")); };
   const cancelProductEdit = () => { if (productDraft.imageRef && productDraft.imageRef !== editingProductOriginalImageRef && desktopProductImageBridge) void desktopProductImageBridge.remove(productDraft.imageRef).catch(() => false); setEditingProductCode(""); setEditingProductOriginalImageRef(""); setProductImagePreviewUrl(""); setProductFormOpen(false); setProductDraft(createEmptyProductDraft()); setLastEvent("Edição de produto cancelada."); };
-  const removeProduct = (product: CatalogProduct) => { if (sale?.items.some((item) => item.productCode === product.productCode)) return setLastEvent(`Remova ${product.productName} da venda em aberto antes de excluir.`); if ((product.productKind ?? "standard") === "parent" && catalogProducts.some((item) => item.parentProductCode === product.productCode)) return setLastEvent(`Remova ou desvincule as variações de ${product.productName} antes de excluir o produto principal.`); setCatalogProducts((current) => current.filter((item) => item.productCode !== product.productCode)); if (product.imageRef && desktopProductImageBridge) void desktopProductImageBridge.remove(product.imageRef).catch(() => false); setStockProductCode((current) => current === product.productCode ? "" : current); setLastEvent(`${product.productName} foi excluído do catálogo. As vendas e movimentações já registradas permanecem no histórico.`); };
+  const removeProduct = (product: CatalogProduct) => { if (sale?.items.some((item) => item.productCode === product.productCode)) return setLastEvent(`Remova ${product.productName} da venda em aberto antes de excluir.`); if ((product.productKind ?? "standard") === "parent" && catalogProducts.some((item) => item.parentProductCode === product.productCode)) return setLastEvent(`Remova ou desvincule as variações de ${product.productName} antes de excluir o produto principal.`); setCatalogProducts((current) => current.filter((item) => item.productCode !== product.productCode)); if (product.imageRef) pendingProductImageDeleteRefs.current.add(product.imageRef); setStockProductCode((current) => current === product.productCode ? "" : current); setLastEvent(`${product.productName} foi excluído do catálogo. As vendas e movimentações já registradas permanecem no histórico.`); };
 
   const savePromotionGroup = () => {
     const name = promotionGroupDraft.name.trim();
