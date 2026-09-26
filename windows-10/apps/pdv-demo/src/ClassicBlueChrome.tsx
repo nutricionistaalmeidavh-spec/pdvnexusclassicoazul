@@ -1,8 +1,10 @@
+import type { ReactNode } from "react";
+
 const go = (route: string) => {
   window.location.hash = route;
 };
 
-function MenuGroup({ label, children }: { label: string; children: React.ReactNode }) {
+function MenuGroup({ label, children }: { label: string; children: ReactNode }) {
   return (
     <details className="classic-blue-menu-group">
       <summary>{label}</summary>
