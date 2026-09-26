@@ -1,0 +1,26 @@
+name: Windows 10 Packaging RED
+
+on:
+  push:
+    branches:
+      - fix/windows10-electron-runtime-44
+    paths:
+      - windows-10/tests/pdv-packaging.test.mjs
+      - .github/workflows/windows10-packaging-red.yml
+
+permissions:
+  contents: read
+
+jobs:
+  packaging-red:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/windows10-electron-runtime-44
+      - name: Install Windows 10 dependencies
+        working-directory: windows-10
+        run: npm ci
+      - name: RED - builder must include identity module
+        working-directory: windows-10
+        run: npm run build:pdv-demo
