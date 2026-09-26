@@ -6,7 +6,6 @@ module.exports = {
   ...base,
   extraMetadata: {
     ...(base.extraMetadata || {}),
-    version: release.version,
-    pdvUpdateManifestUrl: release.manifestUrl
+    version: release.version
   }
 };

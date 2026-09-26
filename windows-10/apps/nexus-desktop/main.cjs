@@ -64,7 +64,7 @@ const APP_META = {
     title: "Sr. Engenheiro"
   },
   "pdv-demo": {
-    title: "PDV Nexus"
+    title: "PDV Nexus Clássico Azul"
   },
   "oficina-demo": {
     title: "Sistema Oficina"

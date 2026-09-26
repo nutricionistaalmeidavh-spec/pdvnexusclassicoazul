@@ -2,6 +2,7 @@ const path = require("node:path");
 const { app, dialog } = require("electron");
 const pkg = require("./package.json");
 const { preparePdvVersionMigration, startPdvAutoUpdater } = require("./pdv-lifecycle.cjs");
+const { applyPdvProductIdentity } = require("./pdv-product-identity.cjs");
 
 let DatabaseSync = null;
 try {
@@ -11,6 +12,9 @@ try {
 }
 
 const isPdv = process.env.NEXUS_APP === "pdv-demo" || Boolean(pkg.pdvUpdateChannel);
+if (isPdv) {
+  applyPdvProductIdentity(app, path);
+}
 let migrationError = null;
 
 if (isPdv) {

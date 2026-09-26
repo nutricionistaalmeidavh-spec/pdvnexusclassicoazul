@@ -1,4 +1,4 @@
-﻿const selectedApp = process.env.NEXUS_APP === "pdv-demo" ? "pdv-demo" : "meu-engenheiro";
+const selectedApp = process.env.NEXUS_APP === "pdv-demo" ? "pdv-demo" : "meu-engenheiro";
 
 const appMap = {
   "meu-engenheiro": {
@@ -8,9 +8,9 @@ const appMap = {
     rendererDir: "../meu-engenheiro/dist"
   },
   "pdv-demo": {
-    appId: "com.nexuscore.pdv",
-    productName: "PDV Nexus",
-    artifactName: "PDV-Nexus-Setup-${version}.${ext}",
+    appId: "com.artisys.pdvnexus.classicoazul",
+    productName: "PDV Nexus Clássico Azul",
+    artifactName: "PDV-Nexus-Classico-Azul-Setup-${version}.${ext}",
     rendererDir: "../pdv-demo/dist"
   },
   "oficina-demo": {
@@ -64,6 +64,6 @@ module.exports = {
     allowElevation: true,
     createDesktopShortcut: true,
     createStartMenuShortcut: true,
-    shortcutName: "PDV Nexus"
+    shortcutName: selectedKey === "pdv-demo" ? "PDV Nexus Clássico Azul" : "PDV Nexus"
   }
 };

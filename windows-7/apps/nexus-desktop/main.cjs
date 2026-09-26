@@ -1,4 +1,4 @@
-﻿const { app, BrowserWindow, ipcMain, safeStorage, session } = require("electron");
+const { app, BrowserWindow, ipcMain, safeStorage, session } = require("electron");
 const fs = require("node:fs");
 const http = require("node:http");
 const os = require("node:os");
@@ -61,7 +61,7 @@ const APP_META = {
     title: "Sr. Engenheiro"
   },
   "pdv-demo": {
-    title: "PDV Nexus"
+    title: "PDV Nexus Clássico Azul"
   },
   "oficina-demo": {
     title: "Sistema Oficina"
