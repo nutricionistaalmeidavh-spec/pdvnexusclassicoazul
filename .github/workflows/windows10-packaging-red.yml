@@ -5,6 +5,7 @@ on:
     branches:
       - fix/windows10-electron-runtime-44
     paths:
+      - windows-10/apps/pdv-demo/src/CustomerPresentationDecor.tsx
       - windows-10/tests/pdv-classic-blue-ui.test.mjs
       - .github/workflows/windows10-packaging-red.yml
 
