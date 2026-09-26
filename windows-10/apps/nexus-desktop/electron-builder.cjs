@@ -35,7 +35,7 @@ const selected = appMap[selectedKey];
 module.exports = {
   appId: selected.appId,
   productName: selected.productName,
-  electronVersion: "39.8.10",
+  electronVersion: "44.4.5",
   npmRebuild: false,
   artifactName: selected.artifactName,
   directories: {
