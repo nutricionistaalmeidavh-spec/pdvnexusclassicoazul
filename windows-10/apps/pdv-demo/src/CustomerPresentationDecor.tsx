@@ -147,7 +147,7 @@ function cleanConfiguration(article: Element) {
 }
 
 function applyCustomerPresentation() {
-  if (document.title !== "PDV Nexus") document.title = "PDV Nexus";
+  if (document.title !== "PDV Nexus Clássico Azul") document.title = "PDV Nexus Clássico Azul";
   const root = document.querySelector(".pdv-density-root");
   const advanced = new URLSearchParams(window.location.search).get("advanced") === "1";
   const advancedValue = advanced ? "true" : "false";
