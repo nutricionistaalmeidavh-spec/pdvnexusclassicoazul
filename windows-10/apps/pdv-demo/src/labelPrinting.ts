@@ -177,15 +177,24 @@ function buildPayloadBarcodeModel(payload: ProductLabelPrintPayload) {
     : buildProductBarcodeRenderModel(payload.product);
 }
 
+function rawBarcodeData(barcode: ProductBarcodeRenderModel) {
+  if (barcode.symbology === "ean13" && /^\d{13}$/.test(barcode.humanReadable)) return barcode.humanReadable.slice(0, 12);
+  if (barcode.symbology === "ean8" && /^\d{8}$/.test(barcode.humanReadable)) return barcode.humanReadable.slice(0, 7);
+  return barcode.humanReadable;
+}
+
 function buildZplLabel(payload: ProductLabelPrintPayload, barcode: ProductBarcodeRenderModel) {
   const { preview } = payload;
   const widthDots = mmToDots(preview.widthMm);
   const heightDots = mmToDots(preview.heightMm);
   const barcodeHeight = Math.max(42, Math.min(72, heightDots - 105));
   const meta = buildRawMetaText(preview);
+  const barcodeData = escapeZpl(rawBarcodeData(barcode));
   const barcodeCommand = barcode.symbology === "ean13"
-    ? `^BY2,2,${barcodeHeight}^BEN,${barcodeHeight},Y,N^FD${escapeZpl(barcode.humanReadable)}^FS`
-    : `^BY2,2,${barcodeHeight}^BCN,${barcodeHeight},Y,N,N^FD${escapeZpl(barcode.humanReadable)}^FS`;
+    ? `^BY2,2,${barcodeHeight}^BEN,${barcodeHeight},Y,N^FD${barcodeData}^FS`
+    : barcode.symbology === "ean8"
+      ? `^BY2,2,${barcodeHeight}^B8N,${barcodeHeight},Y,N^FD${barcodeData}^FS`
+      : `^BY2,2,${barcodeHeight}^BCN,${barcodeHeight},Y,N,N^FD${barcodeData}^FS`;
   return [
     "^XA",
     `^PW${widthDots}`,
@@ -205,14 +214,15 @@ function buildTsplLabel(payload: ProductLabelPrintPayload, barcode: ProductBarco
   const heightDots = mmToDots(preview.heightMm);
   const barcodeHeight = Math.max(42, Math.min(72, heightDots - 105));
   const meta = buildRawMetaText(preview);
-  const barcodeType = barcode.symbology === "ean13" ? "EAN13" : "128";
+  const barcodeType = barcode.symbology === "ean13" ? "EAN13" : barcode.symbology === "ean8" ? "EAN8" : "128";
+  const barcodeData = escapeTspl(rawBarcodeData(barcode));
   return [
     `SIZE ${formatMm(preview.widthMm)} mm,${formatMm(preview.heightMm)} mm`,
     "GAP 2 mm,0 mm",
     "DIRECTION 1",
     "CLS",
     `TEXT 12,8,"0",0,1,1,"${escapeTspl(preview.productName)}"`,
-    `BARCODE 16,42,"${barcodeType}",${barcodeHeight},1,0,2,2,"${escapeTspl(barcode.humanReadable)}"`,
+    `BARCODE 16,42,"${barcodeType}",${barcodeHeight},1,0,2,2,"${barcodeData}"`,
     meta ? `TEXT 12,${Math.max(118, heightDots - 28)},"0",0,1,1,"${escapeTspl(meta)}"` : "",
     payload.batch ? `TEXT 12,${Math.max(138, heightDots - 12)},"0",0,1,1,"RASTREIO FISICO DO LOTE"` : "",
     `PRINT ${clampCopies(preview.copies)},1`
