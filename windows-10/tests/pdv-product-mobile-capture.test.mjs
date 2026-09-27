@@ -62,3 +62,5 @@ test("start fails cleanly when no private LAN IPv4 is available", async () => {
   await assert.rejects(() => service.status("missing"), /sessão|session/i);
   await service.close();
 });
+
+// Lifecycle checkpoint: the implementation above must stay green before HTTP upload behavior is added.
