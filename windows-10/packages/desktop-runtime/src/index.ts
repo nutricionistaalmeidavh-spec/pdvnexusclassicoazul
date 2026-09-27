@@ -116,8 +116,21 @@ export interface DesktopReceiptPrintOptions {
   printerName?: string;
 }
 
+export interface DesktopPrinterInfo {
+  name: string;
+  isDefault?: boolean;
+}
+
+export interface DesktopRawLabelPrintOptions {
+  printerName: string;
+  data: string;
+  jobName?: string;
+}
+
 export interface DesktopPrintingBridge {
   receipt(options: DesktopReceiptPrintOptions): Promise<{ success: boolean; failureReason: string }>;
+  printers?(): Promise<DesktopPrinterInfo[]>;
+  rawLabel?(options: DesktopRawLabelPrintOptions): Promise<{ success: boolean; failureReason?: string }>;
 }
 
 export interface DesktopPdvProductImageResult {
@@ -261,7 +274,9 @@ export function getDesktopPrintingBridge(): DesktopPrintingBridge | undefined {
   if (source !== printingBridgeSource || !printingBridgeFacade) {
     printingBridgeSource = source;
     printingBridgeFacade = {
-      receipt: source.receipt.bind(source)
+      receipt: source.receipt.bind(source),
+      printers: source.printers?.bind(source),
+      rawLabel: source.rawLabel?.bind(source)
     };
   }
   return printingBridgeFacade;

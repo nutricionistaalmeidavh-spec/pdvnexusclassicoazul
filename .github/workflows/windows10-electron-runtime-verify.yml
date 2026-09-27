@@ -10,11 +10,17 @@ on:
       - windows-10/apps/nexus-desktop/electron-builder-pdv.cjs
       - windows-10/apps/nexus-desktop/bootstrap.cjs
       - windows-10/apps/nexus-desktop/pdv-product-identity.cjs
+      - windows-10/apps/nexus-desktop/preload.cjs
       - windows-10/apps/pdv-demo/src/CustomerPresentationDecor.tsx
+      - windows-10/apps/pdv-demo/src/LabelPrinterSettings.tsx
+      - windows-10/apps/pdv-demo/src/labelPrinting.ts
+      - windows-10/apps/pdv-demo/src/main.tsx
+      - windows-10/packages/desktop-runtime/src/index.ts
       - windows-10/package.json
       - windows-10/package-lock.json
       - windows-10/tests/pdv-classic-product-isolation.test.mjs
       - windows-10/tests/pdv-classic-blue-ui.test.mjs
+      - windows-10/tests/pdv-product-labels.test.ts
       - windows-10/tests/pdv-packaging.test.mjs
       - .github/workflows/windows10-electron-runtime-verify.yml
   pull_request:
@@ -25,11 +31,17 @@ on:
       - windows-10/apps/nexus-desktop/electron-builder-pdv.cjs
       - windows-10/apps/nexus-desktop/bootstrap.cjs
       - windows-10/apps/nexus-desktop/pdv-product-identity.cjs
+      - windows-10/apps/nexus-desktop/preload.cjs
       - windows-10/apps/pdv-demo/src/CustomerPresentationDecor.tsx
+      - windows-10/apps/pdv-demo/src/LabelPrinterSettings.tsx
+      - windows-10/apps/pdv-demo/src/labelPrinting.ts
+      - windows-10/apps/pdv-demo/src/main.tsx
+      - windows-10/packages/desktop-runtime/src/index.ts
       - windows-10/package.json
       - windows-10/package-lock.json
       - windows-10/tests/pdv-classic-product-isolation.test.mjs
       - windows-10/tests/pdv-classic-blue-ui.test.mjs
+      - windows-10/tests/pdv-product-labels.test.ts
       - windows-10/tests/pdv-packaging.test.mjs
       - .github/workflows/windows10-electron-runtime-verify.yml
 
