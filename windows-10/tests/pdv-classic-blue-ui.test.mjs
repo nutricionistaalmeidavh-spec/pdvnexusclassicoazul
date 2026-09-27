@@ -19,9 +19,7 @@ test("classic blue chrome is mounted and imported last", () => {
 
 test("classic blue chrome exposes the operational Windows-style menus", () => {
   const chrome = read("apps/pdv-demo/src/ClassicBlueChrome.tsx");
-  for (const label of ["Cadastros", "Movimentações", "Relatórios", "Utilitários", "Ajuda"]) {
-    assert.match(chrome, new RegExp(label));
-  }
+  for (const label of ["Cadastros", "Movimentações", "Relatórios", "Utilitários", "Ajuda"]) assert.match(chrome, new RegExp(label));
   assert.match(chrome, /PDV Nexus Clássico Azul/);
   assert.match(chrome, /Caixa 001/);
 });
@@ -50,9 +48,7 @@ test("cashier uses classic table, totals and function-key surface", () => {
 
 test("classic presentation preserves existing business hooks", () => {
   const app = read("apps/pdv-demo/src/PdvDemoApp.tsx");
-  for (const symbol of ["completePdvSale", "closePdvCashSession", "applyPdvStockMovement", "createPdvAutoBackup", "renderPdvReceipt"]) {
-    assert.match(app, new RegExp(symbol));
-  }
+  for (const symbol of ["completePdvSale", "closePdvCashSession", "applyPdvStockMovement", "createPdvAutoBackup", "renderPdvReceipt"]) assert.match(app, new RegExp(symbol));
   assert.match(app, /event\.key === "F2"/);
   assert.match(app, /event\.key === "F3"/);
   assert.match(app, /event\.key === "F6"/);
@@ -81,6 +77,26 @@ test("product registration supports one validated local product image", () => {
   assert.match(desktop, /5 \* 1024 \* 1024/);
   assert.match(builder, /artisys-upload\.mjs/);
   assert.match(builder, /artisys-files\.mjs/);
+});
+
+test("mobile capture bridge exposes only start status and cancel", () => {
+  const runtime = read("packages/desktop-runtime/src/index.ts");
+  const preload = read("apps/nexus-desktop/preload.cjs");
+  const desktop = read("apps/nexus-desktop/main.cjs");
+
+  assert.match(runtime, /DesktopPdvMobileCaptureSession/);
+  assert.match(runtime, /DesktopPdvMobileCaptureStatus/);
+  assert.match(runtime, /DesktopPdvMobileCaptureBridge/);
+  assert.match(runtime, /getDesktopPdvMobileCaptureBridge/);
+  assert.match(preload, /pdvMobileCapture:\s*\{/);
+  assert.match(preload, /start:\s*\(productCode, productName\)/);
+  assert.match(preload, /status:\s*\(sessionId\)/);
+  assert.match(preload, /cancel:\s*\(sessionId\)/);
+  assert.doesNotMatch(preload, /pdvMobileCapture:[\s\S]{0,500}\b(?:listen|socket|filesystem|fs|request)\s*:/);
+  assert.match(desktop, /persistPdvProductImage/);
+  assert.match(desktop, /nexus-pdv-mobile-capture:start/);
+  assert.match(desktop, /nexus-pdv-mobile-capture:status/);
+  assert.match(desktop, /nexus-pdv-mobile-capture:cancel/);
 });
 
 test("product image upload policy accepts only one JPG PNG or WebP up to 5 MB", () => {
