@@ -99,6 +99,16 @@ test("mobile capture bridge exposes only start status and cancel", () => {
   assert.match(desktop, /nexus-pdv-mobile-capture:cancel/);
 });
 
+test("cashier resolves and renders active product photo with a safe placeholder", () => {
+  const app = read("apps/pdv-demo/src/PdvDemoApp.tsx");
+  assert.match(app, /activeCashierProduct/);
+  assert.match(app, /cashierProductImageUrl/);
+  assert.match(app, /desktopProductImageBridge\.url\(/);
+  assert.match(app, /data-classic-blue="product-image"/);
+  assert.match(app, /Sem foto/);
+  assert.match(app, /onError=\{\(\) => setCashierProductImageUrl\(""\)\}/);
+});
+
 test("product image upload policy accepts only one JPG PNG or WebP up to 5 MB", () => {
   const policy = { maxFiles: 1, maxFileSize: 5 * 1024 * 1024, accept: ["image/jpeg", "image/png", "image/webp"] };
   const accepted = validateUploadBatch([{ name: "produto.webp", size: 1024, type: "image/webp" }], policy);
