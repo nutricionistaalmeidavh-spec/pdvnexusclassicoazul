@@ -9,12 +9,20 @@ on:
       - windows-10/apps/nexus-desktop/electron-builder.cjs
       - windows-10/apps/nexus-desktop/electron-builder-pdv.cjs
       - windows-10/apps/nexus-desktop/bootstrap.cjs
+      - windows-10/apps/nexus-desktop/main.cjs
+      - windows-10/apps/nexus-desktop/preload.cjs
       - windows-10/apps/nexus-desktop/pdv-product-identity.cjs
+      - windows-10/apps/nexus-desktop/pdv-product-mobile-capture.mjs
+      - windows-10/apps/nexus-desktop/package.json
       - windows-10/apps/pdv-demo/src/CustomerPresentationDecor.tsx
+      - windows-10/apps/pdv-demo/src/PdvDemoApp.tsx
+      - windows-10/apps/pdv-demo/src/pdv-classic-blue.css
+      - windows-10/packages/desktop-runtime/src/index.ts
       - windows-10/package.json
       - windows-10/package-lock.json
       - windows-10/tests/pdv-classic-product-isolation.test.mjs
       - windows-10/tests/pdv-classic-blue-ui.test.mjs
+      - windows-10/tests/pdv-product-mobile-capture.test.mjs
       - windows-10/tests/pdv-packaging.test.mjs
       - .github/workflows/windows10-electron-runtime-verify.yml
   pull_request:
@@ -24,12 +32,20 @@ on:
       - windows-10/apps/nexus-desktop/electron-builder.cjs
       - windows-10/apps/nexus-desktop/electron-builder-pdv.cjs
       - windows-10/apps/nexus-desktop/bootstrap.cjs
+      - windows-10/apps/nexus-desktop/main.cjs
+      - windows-10/apps/nexus-desktop/preload.cjs
       - windows-10/apps/nexus-desktop/pdv-product-identity.cjs
+      - windows-10/apps/nexus-desktop/pdv-product-mobile-capture.mjs
+      - windows-10/apps/nexus-desktop/package.json
       - windows-10/apps/pdv-demo/src/CustomerPresentationDecor.tsx
+      - windows-10/apps/pdv-demo/src/PdvDemoApp.tsx
+      - windows-10/apps/pdv-demo/src/pdv-classic-blue.css
+      - windows-10/packages/desktop-runtime/src/index.ts
       - windows-10/package.json
       - windows-10/package-lock.json
       - windows-10/tests/pdv-classic-product-isolation.test.mjs
       - windows-10/tests/pdv-classic-blue-ui.test.mjs
+      - windows-10/tests/pdv-product-mobile-capture.test.mjs
       - windows-10/tests/pdv-packaging.test.mjs
       - .github/workflows/windows10-electron-runtime-verify.yml
 
@@ -64,6 +80,10 @@ jobs:
       - name: Upgrade tests
         working-directory: windows-10
         run: npm run test:pdv-upgrade
+
+      - name: Mobile product capture tests
+        working-directory: windows-10
+        run: node --test tests/pdv-product-mobile-capture.test.mjs
 
       - name: Classic Blue identity and UI contracts
         working-directory: windows-10
