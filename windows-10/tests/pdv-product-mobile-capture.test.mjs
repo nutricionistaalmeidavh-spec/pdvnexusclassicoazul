@@ -224,3 +224,5 @@ test("expired and cancelled tokens return 410 and persistence failures do not pu
     await service.close();
   }
 });
+
+// GREEN checkpoint for the HTTP/session security contract.
