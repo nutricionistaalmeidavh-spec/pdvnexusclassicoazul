@@ -190,6 +190,7 @@ export function PdvDemoApp() {
   const [editingCustomerId, setEditingCustomerId] = useState("");
   const [productDraft, setProductDraft] = useState<ProductDraft>(createEmptyProductDraft);
   const [productImagePreviewUrl, setProductImagePreviewUrl] = useState("");
+  const [cashierProductImageUrl, setCashierProductImageUrl] = useState("");
   const [editingProductOriginalImageRef, setEditingProductOriginalImageRef] = useState("");
   const pendingProductImageDeleteRefs = useRef(new Set<string>());
   const [customerDraft, setCustomerDraft] = useState({ name: "", document: "", city: "", creditLimit: "" });
@@ -245,11 +246,27 @@ export function PdvDemoApp() {
   const itemCount = sale?.items.reduce((sum, item) => sum + item.quantity, 0) ?? 0;
   const discountValue = roundCurrency(grossTotal * ((sale?.discountPercent ?? 0) / 100));
   const netTotal = roundCurrency(grossTotal - discountValue);
+  const activeCashierSaleItem = (sale?.items ?? []).slice(-1)[0];
+  const activeCashierProduct = activeCashierSaleItem ? catalogProducts.find((product) => product.productCode === activeCashierSaleItem.productCode) : undefined;
   const paymentView = resolvePaymentView(netTotal, sale?.payments ?? [], activeCustomer);
   const paidTotal = paymentView.paidTotal;
   const remainingTotal = paymentView.remainingTotal;
   const change = paymentView.changeDue;
   const cashStatus = cashSession && !cashSession.closedAt ? "CAIXA ABERTO" : "CAIXA FECHADO";
+
+  useEffect(() => {
+    let active = true;
+    const imageRef = activeCashierProduct?.imageRef;
+    if (!desktopProductImageBridge || !imageRef) {
+      setCashierProductImageUrl("");
+      return () => { active = false; };
+    }
+    setCashierProductImageUrl("");
+    void desktopProductImageBridge.url(imageRef)
+      .then((url) => { if (active) setCashierProductImageUrl(url || ""); })
+      .catch(() => { if (active) setCashierProductImageUrl(""); });
+    return () => { active = false; };
+  }, [activeCashierProduct?.imageRef, desktopProductImageBridge]);
   const generatedBarcode = barcodeMode === "legacy-brasil" ? "Usando padrao legado de 13 digitos" : safeEncodeScaleBarcode(manualProductCode, barcodeMode as ScaleBarcodeProfileKey);
   const toledoFile = exportToledoItemsFile(sellableCatalogProducts);
   const uranoFile = exportUranoProductsFile(sellableCatalogProducts);
@@ -563,10 +580,10 @@ export function PdvDemoApp() {
           </section>
 
           <aside className="classic-blue-summary">
-            <div className="classic-blue-product-preview">
-              <h3>{(sale?.items ?? []).slice(-1)[0]?.productName ?? "Produto"}</h3>
-              <div className="classic-blue-product-placeholder">{((sale?.items ?? []).slice(-1)[0]?.productName ?? "PDV").slice(0, 2).toUpperCase()}</div>
-              <small>{(sale?.items ?? []).slice(-1)[0] ? `Último item: ${(sale?.items ?? []).slice(-1)[0].productCode}` : "Aguardando leitura de produto"}</small>
+            <div className="classic-blue-product-preview" data-classic-blue="product-image">
+              <h3>{activeCashierSaleItem?.productName ?? "Produto"}</h3>
+              {cashierProductImageUrl ? <img src={cashierProductImageUrl} alt={`Foto de ${activeCashierSaleItem?.productName ?? "produto"}`} onError={() => setCashierProductImageUrl("")} style={{ width: "100%", height: 148, objectFit: "contain", background: "#fff", border: "1px solid #8b9ab0" }} /> : <div className="classic-blue-product-placeholder">Sem foto</div>}
+              <small>{activeCashierSaleItem ? `Último item: ${activeCashierSaleItem.productCode}` : "Aguardando leitura de produto"}</small>
             </div>
             <div className="classic-blue-total-card total"><span>TOTAL</span><strong>{formatCurrency(netTotal)}</strong></div>
             <div className="classic-blue-total-card received"><span>RECEBIDO</span><strong>{formatCurrency(paidTotal)}</strong></div>
