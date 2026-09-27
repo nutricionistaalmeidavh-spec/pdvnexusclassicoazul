@@ -52,4 +52,4 @@ jobs:
         working-directory: windows-10
         run: npm run typecheck
 
-# Explicit checkpoint for the corrected oversized Content-Length case.
+# Task 2 checkpoint: Electron bridge and shared image persistence.
