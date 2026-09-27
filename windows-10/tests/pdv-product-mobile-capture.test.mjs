@@ -165,7 +165,8 @@ test("upload rejects invalid MIME, oversized Content-Length and oversized chunke
     const oversizedLength = await service.start("00124", "Produto 2");
     const tooLong = await request({
       url: localhostUrl(oversizedLength.url, "/image"), method: "POST",
-      headers: { "content-type": "image/png", "content-length": "33" }
+      headers: { "content-type": "image/png", "content-length": "33" },
+      chunks: [Buffer.alloc(33, 1)]
     });
     assert.equal(tooLong.status, 413);
 
