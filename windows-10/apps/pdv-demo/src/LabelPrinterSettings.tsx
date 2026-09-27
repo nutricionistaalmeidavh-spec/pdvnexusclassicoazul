@@ -108,7 +108,7 @@ export function LabelPrinterSettings() {
                 </div>
 
                 <small className="pdv-label-tools-help">Use ZPL ou TSPL somente quando a etiquetadora declarar suporte ao protocolo. Para qualquer impressora instalada por driver, mantenha “Windows / diálogo de impressão”.</small>
-                {directMode ? <small className="pdv-label-tools-help">O modo direto envia o comando RAW ao spooler local do Windows, sem nuvem, assinatura ou servidor intermediário.</small> : null}
+                {directMode ? <small className="pdv-label-tools-help">O modo RAW desta versão está calibrado para 203 dpi e envia o comando diretamente ao spooler local. Em impressoras 300/600 dpi, use o modo Windows/driver.</small> : null}
               </div>
             </div>
           </section>
