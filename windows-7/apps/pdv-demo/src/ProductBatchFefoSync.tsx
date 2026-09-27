@@ -1,5 +1,4 @@
 import { useEffect } from "react";
-import { LabelPrinterSettings } from "./LabelPrinterSettings";
 import { reconcileProductBatchFefoFromCurrentSnapshot } from "./productLabelBatchStore";
 
 export function ProductBatchFefoSync() {
@@ -33,5 +32,5 @@ export function ProductBatchFefoSync() {
     };
   }, []);
 
-  return <LabelPrinterSettings />;
+  return null;
 }
