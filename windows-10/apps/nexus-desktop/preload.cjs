@@ -27,7 +27,7 @@ async function listWindowsPrinters() {
   if (process.platform !== "win32") return [];
   const command = [
     "$ErrorActionPreference = 'Stop'",
-    "[Console]::OutputEncoding = New-Object System.Text.UTF8Encoding",
+    "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8",
     "Get-WmiObject Win32_Printer | ForEach-Object {",
     "  $flag = '0'; if ($_.Default) { $flag = '1' }",
     "  [Console]::Out.WriteLine($flag + \"`t\" + [string]$_.Name)",
@@ -84,7 +84,7 @@ public static class NexusRawPrinter {
   private static extern bool ClosePrinter(IntPtr printerHandle);
 
   [DllImport("winspool.Drv", EntryPoint = "StartDocPrinterW", SetLastError = true, CharSet = CharSet.Unicode)]
-  private static extern int StartDocPrinter(IntPtr printerHandle, int level, [In] DOCINFO docInfo);
+  private static extern int StartDocPrinter(IntPtr printerHandle, int level, [In, MarshalAs(UnmanagedType.LPStruct)] DOCINFO docInfo);
 
   [DllImport("winspool.Drv", SetLastError = true)]
   private static extern bool EndDocPrinter(IntPtr printerHandle);
