@@ -133,6 +133,25 @@ export interface DesktopPdvProductImageBridge {
   remove(imageRef: string): Promise<boolean>;
 }
 
+export interface DesktopPdvMobileCaptureSession {
+  sessionId: string;
+  url: string;
+  qrDataUrl: string;
+  expiresAt: string;
+}
+
+export interface DesktopPdvMobileCaptureStatus {
+  state: "waiting" | "received" | "expired" | "cancelled";
+  imageRef?: string;
+  imageUrl?: string;
+}
+
+export interface DesktopPdvMobileCaptureBridge {
+  start(productCode: string, productName?: string): Promise<DesktopPdvMobileCaptureSession>;
+  status(sessionId: string): Promise<DesktopPdvMobileCaptureStatus>;
+  cancel(sessionId: string): Promise<boolean>;
+}
+
 declare global {
   interface Window {
     nexusDesktop?: {
@@ -149,6 +168,7 @@ declare global {
       pdvSync?: DesktopPdvSyncBridge;
       pdvBackup?: DesktopPdvBackupBridge;
       pdvProductImage?: DesktopPdvProductImageBridge;
+      pdvMobileCapture?: DesktopPdvMobileCaptureBridge;
       printing?: DesktopPrintingBridge;
     };
   }
@@ -249,6 +269,10 @@ export function getDesktopPdvBackupBridge(): DesktopPdvBackupBridge | undefined 
 
 export function getDesktopPdvProductImageBridge(): DesktopPdvProductImageBridge | undefined {
   return window.nexusDesktop?.pdvProductImage;
+}
+
+export function getDesktopPdvMobileCaptureBridge(): DesktopPdvMobileCaptureBridge | undefined {
+  return window.nexusDesktop?.pdvMobileCapture;
 }
 
 export function getDesktopPrintingBridge(): DesktopPrintingBridge | undefined {
