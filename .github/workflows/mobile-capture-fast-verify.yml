@@ -1,0 +1,53 @@
+name: Mobile Capture Fast Verify
+
+on:
+  push:
+    branches:
+      - feat/product-image-mobile-capture
+    paths:
+      - windows-10/apps/nexus-desktop/pdv-product-mobile-capture.mjs
+      - windows-10/apps/nexus-desktop/main.cjs
+      - windows-10/apps/nexus-desktop/preload.cjs
+      - windows-10/apps/pdv-demo/src/PdvDemoApp.tsx
+      - windows-10/packages/desktop-runtime/src/index.ts
+      - windows-10/tests/pdv-product-mobile-capture.test.mjs
+      - windows-10/tests/pdv-classic-blue-ui.test.mjs
+      - windows-10/apps/nexus-desktop/package.json
+      - windows-10/package-lock.json
+      - .github/workflows/mobile-capture-fast-verify.yml
+  pull_request:
+    branches:
+      - main
+    paths:
+      - windows-10/apps/nexus-desktop/pdv-product-mobile-capture.mjs
+      - windows-10/apps/nexus-desktop/main.cjs
+      - windows-10/apps/nexus-desktop/preload.cjs
+      - windows-10/apps/pdv-demo/src/PdvDemoApp.tsx
+      - windows-10/packages/desktop-runtime/src/index.ts
+      - windows-10/tests/pdv-product-mobile-capture.test.mjs
+      - windows-10/tests/pdv-classic-blue-ui.test.mjs
+      - windows-10/apps/nexus-desktop/package.json
+      - windows-10/package-lock.json
+      - .github/workflows/mobile-capture-fast-verify.yml
+
+permissions:
+  contents: read
+
+jobs:
+  mobile-capture:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        working-directory: windows-10
+        run: npm ci
+      - name: Mobile capture tests
+        working-directory: windows-10
+        run: node --test tests/pdv-product-mobile-capture.test.mjs
+      - name: Classic Blue UI contracts
+        working-directory: windows-10
+        run: node --test tests/pdv-classic-blue-ui.test.mjs
+      - name: Typecheck
+        working-directory: windows-10
+        run: npm run typecheck
