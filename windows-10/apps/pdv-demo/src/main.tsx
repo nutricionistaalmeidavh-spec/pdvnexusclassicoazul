@@ -5,7 +5,6 @@ import { CashierReferenceDecor } from "./CashierReferenceDecor";
 import { ClassicBlueChrome } from "./ClassicBlueChrome";
 import { CustomerPresentationDecor } from "./CustomerPresentationDecor";
 import { LabelBatchTools } from "./LabelBatchTools";
-import { LabelPrinterSettings } from "./LabelPrinterSettings";
 import { PdvDemoApp } from "./PdvDemoApp";
 import { PdvOpsDecor } from "./PdvOpsDecor";
 import { ProductBatchFefoSync } from "./ProductBatchFefoSync";
@@ -28,7 +27,6 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
       <BatchPhysicalTrackingDecor />
       <ProductBatchFefoSync />
       <LabelBatchTools />
-      <LabelPrinterSettings />
       <PdvOpsDecor />
       <PdvDemoApp />
     </div>
