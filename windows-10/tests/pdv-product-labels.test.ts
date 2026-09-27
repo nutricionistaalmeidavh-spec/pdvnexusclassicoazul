@@ -12,7 +12,11 @@ import {
   restoreProductBatchAllocation,
   upsertProductBatch
 } from "../apps/pdv-demo/src/productLabels.js";
-import { buildProductLabelPrintHtml } from "../apps/pdv-demo/src/labelPrinting.js";
+import {
+  buildProductLabelPrintHtml,
+  buildRawLabelCommand,
+  normalizeProductLabelPrinterConfig
+} from "../apps/pdv-demo/src/labelPrinting.js";
 import { parseSnapshotTimestamp, reconcileProductBatchFefoSnapshot } from "../apps/pdv-demo/src/productBatchFefo.js";
 
 test("classifica codigo gerado pelo PDV como interno", () => {
@@ -138,6 +142,43 @@ test("P4 gera paginas fisicas no tamanho exato e repete a quantidade de etiqueta
   assert.match(html, /pdv-label-barcode/);
   assert.doesNotMatch(html, /Produto <Teste>/);
   assert.match(html, /Produto &lt;Teste&gt;/);
+});
+
+test("P4 normaliza configuracao da etiquetadora e preserva fallback do Windows", () => {
+  assert.deepEqual(normalizeProductLabelPrinterConfig(undefined), { protocol: "windows", printerName: "" });
+  assert.deepEqual(normalizeProductLabelPrinterConfig({ protocol: "zpl", printerName: "  Zebra ZD220  " }), { protocol: "zpl", printerName: "Zebra ZD220" });
+  assert.deepEqual(normalizeProductLabelPrinterConfig({ protocol: "invalido", printerName: 123 }), { protocol: "windows", printerName: "" });
+});
+
+test("P4 gera comandos ZPL e TSPL com tamanho, barcode e quantidade de copias", () => {
+  const product = {
+    productCode: "123",
+    productName: "Café Premium",
+    barcode: createInternalBarcodeFromProductCode("123"),
+    unitPrice: 9.9,
+    barcodeType: "internal" as const
+  };
+  const preview = buildProductLabelPreview(product, {
+    productCode: product.productCode,
+    copies: 2,
+    sizePreset: "40x25",
+    showPrice: true,
+    showLot: false,
+    showExpiry: false
+  });
+  const payload = { product, preview };
+  const zpl = buildRawLabelCommand(payload, "zpl");
+  assert.match(zpl, /^\^XA/);
+  assert.match(zpl, /\^PW320/);
+  assert.match(zpl, /\^BEN/);
+  assert.match(zpl, /\^PQ2/);
+  assert.match(zpl, /Cafe Premium/);
+
+  const tspl = buildRawLabelCommand(payload, "tspl");
+  assert.match(tspl, /SIZE 40 mm,25 mm/);
+  assert.match(tspl, /BARCODE .*"EAN13"/);
+  assert.match(tspl, /PRINT 2,1/);
+  assert.match(tspl, /Cafe Premium/);
 });
 
 test("P5 FEFO ignora vencido e consome primeiro o lote valido com menor vencimento", () => {

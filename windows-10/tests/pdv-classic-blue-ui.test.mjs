@@ -32,6 +32,12 @@ test("customer presentation keeps the Classic Blue window title", () => {
   assert.doesNotMatch(decor, /document\.title\s*=\s*"PDV Nexus"/);
 });
 
+test("renderer document starts with the Classic Blue window title", () => {
+  const html = read("apps/pdv-demo/index.html");
+  assert.match(html, /<title>PDV Nexus Clássico Azul<\/title>/);
+  assert.doesNotMatch(html, /<title>PDV Nexus<\/title>/);
+});
+
 test("cashier uses classic table, totals and function-key surface", () => {
   const app = read("apps/pdv-demo/src/PdvDemoApp.tsx");
   assert.match(app, /data-classic-blue="cashier"/);
