@@ -197,6 +197,11 @@ contextBridge.exposeInMainWorld("nexusDesktop", {
     url: (imageRef) => ipcRenderer.invoke("nexus-pdv-product-image:url", imageRef),
     remove: (imageRef) => ipcRenderer.invoke("nexus-pdv-product-image:remove", imageRef)
   },
+  pdvMobileCapture: {
+    start: (productCode, productName) => ipcRenderer.invoke("nexus-pdv-mobile-capture:start", productCode, productName),
+    status: (sessionId) => ipcRenderer.invoke("nexus-pdv-mobile-capture:status", sessionId),
+    cancel: (sessionId) => ipcRenderer.invoke("nexus-pdv-mobile-capture:cancel", sessionId)
+  },
   printing: {
     receipt: (options) => ipcRenderer.invoke("nexus-print:receipt", options),
     printers: () => listWindowsPrinters(),

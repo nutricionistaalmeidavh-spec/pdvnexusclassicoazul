@@ -1,0 +1,44 @@
+name: Native mobile capture patch runner
+
+on:
+  push:
+    branches:
+      - feat/product-image-mobile-capture
+    paths:
+      - .github/native-mobile-capture/**
+
+permissions:
+  contents: write
+
+jobs:
+  apply-patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: feat/product-image-mobile-capture
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: windows-10/package-lock.json
+
+      - name: Apply deterministic Native patch
+        run: node .github/native-mobile-capture/apply.mjs
+
+      - name: Commit generated implementation changes
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            echo "No implementation changes to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add windows-10 .github/workflows/windows10-electron-runtime-verify.yml
+          git commit -m "chore: apply native mobile capture implementation patch"
+          git push origin HEAD:feat/product-image-mobile-capture

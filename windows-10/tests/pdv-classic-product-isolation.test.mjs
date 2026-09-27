@@ -12,6 +12,7 @@ const bootstrapPath = path.join(desktopDir, "bootstrap.cjs");
 const mainPath = path.join(desktopDir, "main.cjs");
 const builderPath = path.join(desktopDir, "electron-builder.cjs");
 const pdvBuilderPath = path.join(desktopDir, "electron-builder-pdv.cjs");
+const pdvIndexPath = fileURLToPath(new URL("../apps/pdv-demo/index.html", import.meta.url));
 const releasePath = fileURLToPath(new URL("../../pdv-release.json", import.meta.url));
 const packagePath = fileURLToPath(new URL("../package.json", import.meta.url));
 
@@ -59,9 +60,12 @@ test("bootstrap applies classic identity before migration touches userData", () 
   assert.ok(applyIndex < migrationIndex, "identity must be applied before migration reads userData");
 });
 
-test("runtime title is classic blue", () => {
+test("runtime title is classic blue from the first rendered frame", () => {
   const source = fs.readFileSync(mainPath, "utf8");
+  const html = fs.readFileSync(pdvIndexPath, "utf8");
   assert.match(source, /"pdv-demo":\s*\{\s*title:\s*"PDV Nexus Clássico Azul"/m);
+  assert.match(html, /<title>PDV Nexus Clássico Azul<\/title>/);
+  assert.doesNotMatch(html, /<title>PDV Nexus<\/title>/);
 });
 
 test("pdv package metadata does not embed original updater", () => {
