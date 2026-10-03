@@ -94,3 +94,4 @@ export const meuEngenheiroSeed: MeuEngenheiroSeed = {
   ]
 };
 export * from "./pdv.js";
+export * from "./commerce.js";
