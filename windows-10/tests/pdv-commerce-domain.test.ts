@@ -6,7 +6,9 @@ import {
   createOrder,
   createPosOrderFromSale,
   isOfferAvailableOnChannel,
-  transitionOrder
+  transitionOrder,
+  readCommerceExtension,
+  writeCommerceExtension
 } from "../packages/database/src/commerce.js";
 
 test("catalog offer exposes one product to selected channels without duplicating the product", () => {
@@ -80,4 +82,20 @@ test("order transition does not silently couple payment to fulfillment", () => {
   assert.equal(paid.paymentStatus, "PAID");
   assert.equal(paid.fulfillmentStatus, "PENDING");
   assert.equal(paid.status, "OPEN");
+});
+
+test("commerce extension persists beside the v1 PDV snapshot without replacing legacy fields", () => {
+  const extensions = writeCommerceExtension({ existing: { enabled: true } }, {
+    schemaVersion: 1,
+    offers: [],
+    orders: [createOrder({
+      id: "ORDER-3",
+      number: "0003",
+      channel: "POS",
+      openedAt: "2026-10-03T12:00:00.000Z"
+    })]
+  });
+
+  assert.deepEqual(extensions.existing, { enabled: true });
+  assert.equal(readCommerceExtension(extensions).orders[0]?.number, "0003");
 });
