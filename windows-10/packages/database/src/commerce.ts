@@ -227,3 +227,96 @@ export function writeCommerceExtension(
 function roundCurrency(value: number) {
   return Number(value.toFixed(2));
 }
+
+export type ProductionTicketStatus = "PENDING" | "ACCEPTED" | "PREPARING" | "READY" | "DELIVERED" | "CANCELLED";
+
+export interface ProductionTicket {
+  id: string;
+  orderId: string;
+  orderNumber: string;
+  station: string;
+  status: ProductionTicketStatus;
+  items: CommerceOrderItem[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export function createWaiterOrder(input: {
+  id: string;
+  number: string;
+  tableId: string;
+  operatorId: string;
+  openedAt: string;
+  customerId?: string;
+}): CommerceOrder {
+  const tableId = input.tableId.trim();
+  const operatorId = input.operatorId.trim();
+  if (!tableId) throw new Error("Informe a mesa para abrir a comanda.");
+  if (!operatorId) throw new Error("Informe o garcom responsavel.");
+
+  return createOrder({
+    id: input.id,
+    number: input.number,
+    channel: "WAITER",
+    openedAt: input.openedAt,
+    tableId,
+    operatorId,
+    customerId: input.customerId
+  });
+}
+
+export function addItemToOpenOrder(order: CommerceOrder, item: CommerceOrderItem): CommerceOrder {
+  if (order.status !== "OPEN") {
+    throw new Error("Somente pedidos abertos podem receber novos itens.");
+  }
+  if (!(item.quantity > 0)) throw new Error("Quantidade do item deve ser maior que zero.");
+  if (item.requiresPreparation && !item.preparationStation?.trim()) {
+    throw new Error("Item de producao precisa de uma estacao de preparo.");
+  }
+
+  return { ...order, items: [...order.items, item] };
+}
+
+export function createProductionTickets(order: CommerceOrder, createdAt: string): ProductionTicket[] {
+  const grouped = new Map<string, CommerceOrderItem[]>();
+  for (const item of order.items) {
+    if (!item.requiresPreparation) continue;
+    const station = item.preparationStation?.trim();
+    if (!station) throw new Error(`Item ${item.productName} exige producao mas nao possui estacao.`);
+    grouped.set(station, [...(grouped.get(station) ?? []), item]);
+  }
+
+  return [...grouped.entries()].map(([station, items]) => ({
+    id: `KDS-${order.id}-${normalizeIdPart(station)}`,
+    orderId: order.id,
+    orderNumber: order.number,
+    station,
+    status: "PENDING" as const,
+    items,
+    createdAt,
+    updatedAt: createdAt
+  }));
+}
+
+export function transitionProductionTicket(
+  ticket: ProductionTicket,
+  status: ProductionTicketStatus,
+  updatedAt: string
+): ProductionTicket {
+  const allowed: Record<ProductionTicketStatus, ProductionTicketStatus[]> = {
+    PENDING: ["ACCEPTED", "PREPARING", "CANCELLED"],
+    ACCEPTED: ["PREPARING", "CANCELLED"],
+    PREPARING: ["READY", "CANCELLED"],
+    READY: ["DELIVERED", "CANCELLED"],
+    DELIVERED: [],
+    CANCELLED: []
+  };
+  if (status !== ticket.status && !allowed[ticket.status].includes(status)) {
+    throw new Error(`Transicao KDS invalida: ${ticket.status} -> ${status}.`);
+  }
+  return { ...ticket, status, updatedAt };
+}
+
+function normalizeIdPart(value: string) {
+  return value.trim().toUpperCase().replace(/[^A-Z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
