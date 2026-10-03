@@ -198,12 +198,14 @@ export interface CommerceExtensionState {
   schemaVersion: 1;
   offers: CatalogOffer[];
   orders: CommerceOrder[];
+  productionTickets?: ProductionTicket[];
 }
 
 export const EMPTY_COMMERCE_EXTENSION: CommerceExtensionState = {
   schemaVersion: 1,
   offers: [],
-  orders: []
+  orders: [],
+  productionTickets: []
 };
 
 export function readCommerceExtension(extensions?: Record<string, unknown>): CommerceExtensionState {
@@ -213,7 +215,8 @@ export function readCommerceExtension(extensions?: Record<string, unknown>): Com
   return {
     schemaVersion: 1,
     offers: Array.isArray(value.offers) ? value.offers : [],
-    orders: Array.isArray(value.orders) ? value.orders : []
+    orders: Array.isArray(value.orders) ? value.orders : [],
+    productionTickets: Array.isArray(value.productionTickets) ? value.productionTickets : []
   };
 }
 
